@@ -14,14 +14,12 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
 
-
 # ---------------- HOME ----------------
 @app.route('/')
 def home():
     admin_manual = os.path.exists(os.path.join(app.static_folder, "admin_manual.pdf"))
     student_manual = os.path.exists(os.path.join(app.static_folder, "student_manual.pdf"))
     return render_template("home.html", admin_manual=admin_manual, student_manual=student_manual)
-
 
 # ---------------- ADMIN ROUTES ----------------
 @app.route("/admin/login", methods=["GET", "POST"])
@@ -37,7 +35,6 @@ def admin_login():
         else:
             flash("Invalid credentials!", "danger")
     return render_template("login.html")
-
 
 @app.route("/admin/dashboard", methods=["GET", "POST"])
 def admin_dashboard():
@@ -69,13 +66,11 @@ def admin_dashboard():
 
     return render_template("dashboard.html")
 
-
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin", None)
     flash("Logged out successfully!", "info")
     return redirect(url_for("admin_login"))
-
 
 # ---------------- USER ROUTES ----------------
 @app.route("/user/search", methods=["GET", "POST"])
@@ -107,7 +102,6 @@ def user_search():
 
     return render_template("search.html", num1=num1, num2=num2)
 
-
 @app.route("/user/idcard/<int:student_id>")
 def user_idcard(student_id):
     conn = sqlite3.connect(os.path.join("instance", "students.db"))
@@ -131,7 +125,6 @@ def user_idcard(student_id):
         flash("⚠ Student not found!", "warning")
         return redirect(url_for("user_search"))
 
-
 @app.route("/user/download/<int:student_id>")
 def user_download(student_id):
     conn = sqlite3.connect(os.path.join("instance", "students.db"))
@@ -150,8 +143,20 @@ def user_download(student_id):
             "ieee_id": student[5],
             "qr_code": student[6]
         }
+
         pdf_file = generate_idcard_pdf(student_data)
-        return send_from_directory("app/static/qrcodes", pdf_file, as_attachment=True)
+        pdf_path = os.path.join(app.root_path, "static", "qrcodes", pdf_file)
+
+        # ✅ Check if file exists before sending
+        if not os.path.exists(pdf_path):
+            flash("⚠ PDF not generated! Try again.", "warning")
+            return redirect(url_for("user_idcard", student_id=student_id))
+
+        return send_from_directory(
+            directory=os.path.join(app.root_path, "static", "qrcodes"),
+            path=pdf_file,
+            as_attachment=True
+        )
     else:
         flash("⚠ Student not found!", "warning")
         return redirect(url_for("user_search"))
