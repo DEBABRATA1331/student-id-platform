@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Search</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .search-card {
+            max-width: 500px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            animation: fadeInUp 1s ease-in-out;
+        }
+        h2 {
+            text-align: center;
+            color: #ff5e62;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 8px;
+        }
+        .btn-primary {
+            background: #ff5e62;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.3s ease;
+        }
+        .btn-primary:hover {
+            background: #e34a4f;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="search-card animate__animated animate__fadeInUp">
+    <h2 class="mb-4">🔍 Search Your Digital ID Card</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} animate__animated animate__shakeX">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="animate__animated animate__fadeIn">
+        <div class="mb-3">
+            <label for="name" class="form-label"><strong>Enter Your Name:</strong></label>
+            <input type="text" name="name" class="form-control" placeholder="Type your full name" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label"><strong>Solve:</strong> {{ num1 }} + {{ num2 }} = ?</label>
+            <input type="number" name="captcha_answer" class="form-control" placeholder="Enter the answer" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-2">🔎 Search</button>
+    </form>
+</div>
+</body>
+</html>
