@@ -1,6 +1,6 @@
 Flask==2.3.2
 pandas==2.0.3
 qrcode==7.4.2
-Pillow==10.0.0
+Pillow==9.5.0
 reportlab==4.0.4
 gunicorn==21.2.0
