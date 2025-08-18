@@ -27,6 +27,23 @@
             animation: fadeInUp 1s ease-in-out;
             position: relative;
         }
+        .profile-pic {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+        .domain-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .tech { background-color: #007bff; }
+        .non-tech { background-color: #28a745; }
         .org-logo {
             max-width: 70px;
             margin-bottom: 5px;
@@ -46,11 +63,8 @@
             font-weight: bold;
             font-size: 14px;
         }
-        h4 {
-            margin-top: 15px;
-            color: #333;
-            font-weight: bold;
-        }
+        h4 { margin-top: 10px; color: #333; font-weight: bold; }
+        .details p { margin: 3px 0; font-size: 15px; color: #555; text-align: left; }
         .qr-code {
             max-width: 130px;
             margin: 15px auto;
@@ -59,55 +73,43 @@
             padding: 5px;
             background: #f9f9f9;
         }
-        .details p {
-            margin: 3px 0;
-            font-size: 15px;
-            color: #555;
-        }
-        .btn-success {
+        .btn-custom {
             border-radius: 8px;
             font-weight: bold;
-            background: #28a745;
-            border: none;
-            transition: 0.3s ease;
-        }
-        .btn-success:hover {
-            background: #218838;
-        }
-        .btn-secondary {
-            border-radius: 8px;
-            font-weight: bold;
-            background: #6c757d;
-            border: none;
             margin-top: 8px;
-            transition: 0.3s ease;
         }
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
+        .btn-success { background: #28a745; border: none; width: 100%; }
+        .btn-success:hover { background: #218838; }
+        .btn-secondary { background: #6c757d; border: none; width: 100%; }
+        .btn-secondary:hover { background: #5a6268; }
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
 <div class="id-card animate__animated animate__fadeInUp">
+    <!-- Profile Picture -->
+    {% if student.profile_pic %}
+        <img src="{{ url_for('static', filename='profile_pics/' + student.profile_pic) }}" class="profile-pic" alt="Profile Picture">
+    {% else %}
+        <img src="{{ url_for('static', filename='images/default_profile.png') }}" class="profile-pic" alt="Profile Picture">
+    {% endif %}
+
     <!-- Organization Logo & Name -->
     <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="org-logo">
     <div class="org-name">IEEE VSSUT STUDENT BRANCH</div>
+
+    <!-- Domain Badge -->
+    <div class="domain-badge {{ 'tech' if student.domain_type == 'Tech' else 'non-tech' }}">
+        {{ student.domain }}
+    </div>
 
     <!-- Student Details -->
     <div class="id-header">STUDENT ID CARD</div>
     <h4>{{ student.name }}</h4>
     <div class="details">
-        <p><b>Domain:</b> {{ student.domain }}</p>
         <p><b>Joining Date:</b> {{ student.joining_date }}</p>
         <p><b>Category:</b> {{ student.category }}</p>
         <p><b>IEEE ID:</b> {{ student.ieee_id }}</p>
@@ -116,13 +118,15 @@
     <!-- QR Code -->
     <img src="{{ url_for('static', filename='qrcodes/' + student.qr_code) }}" alt="QR Code" class="qr-code">
 
+    <!-- Download History -->
+    {% if student.download_count is defined %}
+        <p style="font-size: 12px; color: #666;">Downloaded {{ student.download_count }} times</p>
+    {% endif %}
+
     <!-- Buttons -->
-    <a href="{{ url_for('user_download', student_id=student.id) }}" class="btn btn-success w-100 mt-2">
-        ⬇ Download ID Card (PDF)
-    </a>
-    <a href="{{ url_for('user_search') }}" class="btn btn-secondary w-100">
-        🔄 Search Again
-    </a>
+    <button onclick="window.print()" class="btn btn-success btn-custom">🖨 Print ID Card</button>
+    <a href="{{ url_for('user_download', student_id=student.id) }}" class="btn btn-secondary btn-custom">⬇ Download PDF</a>
+    <a href="{{ url_for('user_search') }}" class="btn btn-secondary btn-custom">🔄 Search Again</a>
 </div>
 </body>
 </html>

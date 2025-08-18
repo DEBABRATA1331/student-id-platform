@@ -10,14 +10,13 @@
             background: #f5f5f5;
             font-family: Arial, sans-serif;
         }
-        .container {
-            max-width: 600px;
-            margin-top: 40px;
+        .container-main {
+            max-width: 900px;
+            margin: 40px auto;
             background: #fff;
             padding: 25px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            text-align: center;
         }
         img.logo {
             width: 120px;
@@ -34,33 +33,81 @@
             color: #007BFF;
             font-weight: bold;
         }
+        .society-card img {
+            max-width: 60px;
+            margin-bottom: 10px;
+        }
+        .society-card {
+            text-align: center;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .society-card:hover {
+            transform: translateY(-5px);
+        }
+        .announcement {
+            background: #e9f5ff;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #185a9d;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" class="logo" alt="Platform Logo">
-        <h1 class="text-primary">Welcome to Student ID Platform</h1>
-        <p class="text-muted">This platform helps manage student records, generate ID cards, and search student details easily.</p>
+<div class="container-main text-center">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" class="logo" alt="Platform Logo">
+    <h1 class="text-primary">Welcome to Student ID Platform</h1>
+    <p class="text-muted">This platform helps manage student records, generate ID cards, and search student details easily.</p>
 
-       <a href="{{ url_for('admin_login') }}" class="btn btn-primary w-100 mb-2">🔐 Admin Login</a>
-<a href="{{ url_for('user_search') }}" class="btn btn-success w-100 mb-2">🔍 Search Student Records</a>
+    <!-- Admin/User buttons -->
+    <a href="{{ url_for('admin_login') }}" class="btn btn-primary w-100 mb-2">🔐 Admin Login</a>
+    <a href="{{ url_for('user_search') }}" class="btn btn-success w-100 mb-2">🔍 Search Student Records</a>
 
-<h4 class="mt-3">User Manuals</h4>
-{% if admin_manual %}
-    <a href="{{ url_for('static', filename='admin_manual.pdf') }}" class="btn btn-outline-primary w-100 mb-2">📘 Admin Manual</a>
-{% endif %}
-{% if student_manual %}
-    <a href="{{ url_for('static', filename='student_manual.pdf') }}" class="btn btn-outline-success w-100 mb-2">📗 Student Manual</a>
-{% endif %}
+    <!-- User Manuals -->
+    <h4 class="mt-3">User Manuals</h4>
+    {% if admin_manual %}
+        <a href="{{ url_for('static', filename='admin_manual.pdf') }}" class="btn btn-outline-primary w-100 mb-2">📘 Admin Manual</a>
+    {% endif %}
+    {% if student_manual %}
+        <a href="{{ url_for('static', filename='student_manual.pdf') }}" class="btn btn-outline-success w-100 mb-2">📗 Student Manual</a>
+    {% endif %}
 
-
-        <div class="auth-message">
-            Authorized by IEEE VSSUT Student Branch
+    <!-- IEEE Societies Section -->
+    <h4 class="mt-4">IEEE Societies</h4>
+    <div class="row row-cols-2 row-cols-md-3 g-3 mb-3">
+        {% for society in societies %}
+        <div class="col">
+            <div class="society-card">
+                <img src="{{ url_for('static', filename='images/' + society.logo) }}" alt="{{ society.name }} Logo">
+                <h6>{{ society.name }}</h6>
+            </div>
         </div>
-        <footer>
-            &copy; 2025 Student ID Platform | Developed by Debabrata Sahoo |
-            Contact: <a href="mailto:ieee.vssut@gmail.com">ieee.vssut@gmail.com</a>
-        </footer>
+        {% endfor %}
     </div>
+
+    <!-- Announcements Section -->
+    <h4 class="mt-4">Recent Announcements</h4>
+    {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement text-start">
+            <strong>{{ ann.title }}</strong> - {{ ann.date }}<br>
+            {{ ann.description }}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No recent announcements.</p>
+    {% endif %}
+
+    <div class="auth-message">
+        Authorized by IEEE VSSUT Student Branch
+    </div>
+    <footer>
+        &copy; 2025 Student ID Platform | Developed by Debabrata Sahoo |
+        Contact: <a href="mailto:ieee.vssut@gmail.com">ieee.vssut@gmail.com</a>
+    </footer>
+</div>
 </body>
 </html>

@@ -17,7 +17,7 @@
             padding: 15px;
         }
         .search-card {
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
             background: #ffffff;
             border-radius: 15px;
@@ -52,15 +52,20 @@
         .btn-secondary:hover {
             background: #5a6268;
         }
+        .captcha-icons {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .history-card {
+            margin-top: 20px;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        }
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -77,19 +82,50 @@
     {% endwith %}
 
     <form method="POST" class="animate__animated animate__fadeIn">
+        <!-- Name with autocomplete -->
         <div class="mb-3">
             <label for="name" class="form-label"><strong>Enter Your Name:</strong></label>
-            <input type="text" name="name" class="form-control" placeholder="Type your full name" required>
+            <input type="text" name="name" list="name-suggestions" class="form-control" placeholder="Type your full name">
+            <datalist id="name-suggestions">
+                {% for n in all_student_names %}
+                    <option value="{{ n }}">
+                {% endfor %}
+            </datalist>
         </div>
 
+        <!-- IEEE ID search -->
         <div class="mb-3">
-            <label class="form-label"><strong>Solve:</strong> {{ num1 }} + {{ num2 }} = ?</label>
+            <label for="ieee_id" class="form-label"><strong>Or enter IEEE ID:</strong></label>
+            <input type="text" name="ieee_id" class="form-control" placeholder="Type your IEEE ID">
+        </div>
+
+        <!-- Visual CAPTCHA -->
+        <div class="mb-3">
+            <label class="form-label"><strong>Solve:</strong></label>
+            <div class="captcha-icons">
+                {% for i in range(num1) %}🔵{% endfor %}
+                +
+                {% for i in range(num2) %}🔴{% endfor %}
+                =
+            </div>
             <input type="number" name="captcha_answer" class="form-control" placeholder="Enter the answer" required>
         </div>
 
         <button type="submit" class="btn btn-primary w-100 mt-2">🔎 Search</button>
         <a href="/" class="btn btn-secondary w-100 mt-2">⬅ Back to Home</a>
     </form>
+
+    <!-- Optional: Student history display -->
+    {% if student %}
+    <div class="history-card animate__animated animate__fadeIn">
+        <h5>Student Activity History</h5>
+        <p><b>Name:</b> {{ student.name }}</p>
+        <p><b>IEEE ID:</b> {{ student.ieee_id }}</p>
+        <p><b>Total ID Downloads:</b> {{ student.history.total_downloads }}</p>
+        <p><b>Last Login:</b> {{ student.history.last_login }}</p>
+        <p><b>Recent Searches:</b> {{ student.history.recent_searches }}</p>
+    </div>
+    {% endif %}
 </div>
 </body>
 </html>

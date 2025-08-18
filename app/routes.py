@@ -6,20 +6,60 @@ import random
 import sqlite3
 from app.models import clear_and_insert_students
 from app.utils import generate_qr_code, generate_idcard_pdf
+import threading
+import io
+import csv
 
 # ---------------- CONFIG ----------------
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs("static/attendance_reports", exist_ok=True)
 
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
+
+# ---------------- ATTENDANCE ----------------
+# In-memory storage for active attendance sessions
+# Format: {event_date: {student_id: status}}
+active_attendance = {}
+
+def end_attendance(event_date):
+    """Automatically save attendance CSV after session ends."""
+    if event_date in active_attendance:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Student ID", "Status"])
+        for sid, status in active_attendance[event_date].items():
+            writer.writerow([sid, status])
+        report_file = f"attendance_{event_date}.csv"
+        with open(os.path.join("static/attendance_reports", report_file), "w", newline="") as f:
+            f.write(output.getvalue())
+        print(f"Attendance session for {event_date} ended. Report saved!")
+        del active_attendance[event_date]  # Remove session after saving
 
 # ---------------- HOME ----------------
 @app.route('/')
 def home():
     admin_manual = os.path.exists(os.path.join(app.static_folder, "admin_manual.pdf"))
     student_manual = os.path.exists(os.path.join(app.static_folder, "student_manual.pdf"))
-    return render_template("home.html", admin_manual=admin_manual, student_manual=student_manual)
+
+    societies = [
+        {"name": "IEEE CASS", "logo": "cass.png"},
+        {"name": "IEEE COMSOC", "logo": "comsoc.png"},
+        {"name": "IEEE WIE", "logo": "wie.png"},
+        {"name": "IEEE Sensor Council", "logo": "sensor.png"},
+        {"name": "IEEE Computer Society", "logo": "computer.png"}
+    ]
+
+    announcements = [
+        {"title": "Workshop on Robotics", "date": "2025-08-15", "description": "Join us for a hands-on robotics workshop."},
+        {"title": "IEEE Day Celebration", "date": "2025-10-02", "description": "Mark your calendars for IEEE Day 2025 events."}
+    ]
+
+    return render_template("home.html", admin_manual=admin_manual,
+                           student_manual=student_manual,
+                           societies=societies,
+                           announcements=announcements)
 
 # ---------------- ADMIN ROUTES ----------------
 @app.route("/admin/login", methods=["GET", "POST"])
@@ -41,6 +81,7 @@ def admin_dashboard():
     if not session.get("admin"):
         return redirect(url_for("admin_login"))
 
+    # Handle CSV upload
     if request.method == "POST":
         file = request.files.get("csv_file")
         if file and file.filename.endswith(".csv"):
@@ -64,13 +105,55 @@ def admin_dashboard():
         else:
             flash("Please upload a valid CSV file.", "danger")
 
-    return render_template("dashboard.html")
+    # Attendance report files
+    attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
+
+    return render_template("dashboard.html", attendance_files=attendance_files)
 
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin", None)
     flash("Logged out successfully!", "info")
     return redirect(url_for("admin_login"))
+
+# ---------------- ATTENDANCE ROUTES ----------------
+@app.route("/admin/start_attendance")
+def admin_start_attendance():
+    """Admin starts attendance for a given date from dashboard."""
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
+
+    event_date = request.args.get("event_date")
+    if not event_date:
+        flash("Please select a date to start attendance.", "warning")
+        return redirect(url_for("admin_dashboard"))
+
+    if event_date in active_attendance:
+        flash("Attendance session already active!", "warning")
+    else:
+        active_attendance[event_date] = {}
+        threading.Timer(180, end_attendance, args=[event_date]).start()
+        flash(f"Attendance session for {event_date} started! Students have 3 minutes.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/attendance/<event_date>")
+def attendance_page(event_date):
+    """Student-facing attendance page to mark themselves present/absent."""
+    conn = sqlite3.connect(os.path.join("instance", "students.db"))
+    c = conn.cursor()
+    c.execute("SELECT id, name FROM students")
+    students = c.fetchall()
+    conn.close()
+
+    return render_template("attendance.html", event_date=event_date, students=students)
+
+@app.route("/attendance/mark/<event_date>/<int:student_id>")
+def mark_attendance(event_date, student_id):
+    """Student marks themselves present."""
+    if event_date in active_attendance:
+        active_attendance[event_date][student_id] = "Present"
+        return f"{student_id} marked as Present for {event_date}"
+    return "Attendance session not active!"
 
 # ---------------- USER ROUTES ----------------
 @app.route("/user/search", methods=["GET", "POST"])
@@ -147,7 +230,6 @@ def user_download(student_id):
         pdf_file = generate_idcard_pdf(student_data)
         pdf_path = os.path.join(app.root_path, "static", "qrcodes", pdf_file)
 
-        # ✅ Check if file exists before sending
         if not os.path.exists(pdf_path):
             flash("⚠ PDF not generated! Try again.", "warning")
             return redirect(url_for("user_idcard", student_id=student_id))

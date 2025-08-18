@@ -10,15 +10,18 @@
             background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
             font-family: 'Segoe UI', sans-serif;
         }
+        .dashboard-container {
+            max-width: 1000px;
+            margin: 30px auto;
+        }
         .dashboard-card {
-            max-width: 600px;
-            margin: 50px auto;
             background: #ffffff;
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
             animation: fadeInUp 1s ease-in-out;
             text-align: center;
+            margin-bottom: 20px;
         }
         .org-logo {
             max-width: 80px;
@@ -31,63 +34,183 @@
             text-transform: uppercase;
             margin-bottom: 15px;
         }
-        .dashboard-card h2 {
+        .stats-card {
+            background: #f0f8ff;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .stats-card h4 {
             color: #185a9d;
             font-weight: bold;
         }
-        .btn-primary {
-            background: #185a9d;
-            border: none;
+        .btn-primary, .btn-success, .btn-secondary {
             border-radius: 8px;
             font-weight: bold;
             transition: 0.3s ease;
         }
-        .btn-primary:hover {
-            background: #0f3d6f;
-        }
-        .btn-danger {
-            border-radius: 8px;
-        }
+        .btn-primary { background: #185a9d; border: none; }
+        .btn-primary:hover { background: #0f3d6f; }
+        .btn-success { background: #28a745; border: none; }
+        .btn-success:hover { background: #218838; }
+        .btn-secondary { background: #6c757d; border: none; }
+        .btn-secondary:hover { background: #5a6268; }
+        table { margin-top: 15px; }
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-<div class="dashboard-card animate__animated animate__fadeInUp">
+<div class="dashboard-container">
     <!-- Organization Branding -->
-    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="org-logo">
-    <div class="org-name">IEEE VSSUT STUDENT BRANCH</div>
+    <div class="dashboard-card animate__animated animate__fadeInUp">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="org-logo">
+        <div class="org-name">IEEE VSSUT STUDENT BRANCH</div>
 
-    <!-- Admin Welcome -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="animate__animated animate__fadeInDown">Welcome, Admin!</h2>
-        <a href="{{ url_for('admin_logout') }}" class="btn btn-danger">Logout</a>
-    </div>
-    <hr>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} animate__animated animate__fadeIn">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <!-- CSV Upload Form -->
-    <form method="POST" enctype="multipart/form-data" class="animate__animated animate__fadeInUp">
-        <div class="mb-3">
-            <label class="form-label"><strong>Upload Student CSV:</strong></label>
-            <input type="file" name="csv_file" accept=".csv" class="form-control" required>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="animate__animated animate__fadeInDown">Welcome, Admin!</h2>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn-danger">Logout</a>
         </div>
-        <button type="submit" class="btn btn-primary w-100">⬆ Upload & Generate QR</button>
-    </form>
+        <hr>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} animate__animated animate__fadeIn">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- CSV Upload Form -->
+        <form method="POST" enctype="multipart/form-data" class="animate__animated animate__fadeInUp">
+            <div class="mb-3">
+                <label class="form-label"><strong>Upload Student CSV:</strong></label>
+                <input type="file" name="csv_file" accept=".csv" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">⬆ Upload & Generate QR</button>
+        </form>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="dashboard-card animate__animated animate__fadeInUp">
+        <h3>📊 Statistics</h3>
+        <div class="row">
+            <div class="col-md-4 stats-card">
+                <h4>Total Students</h4>
+                <p>{{ stats.total_students }}</p>
+            </div>
+            <div class="col-md-4 stats-card">
+                <h4>Total ID Cards Generated</h4>
+                <p>{{ stats.total_id_cards }}</p>
+            </div>
+            <div class="col-md-4 stats-card">
+                <h4>Tech / Non-Tech</h4>
+                <p>Tech: {{ stats.tech }} | Non-Tech: {{ stats.non_tech }}</p>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-12 stats-card">
+                <h4>Students per Society</h4>
+                <p>CASS: {{ stats.cass }}, COMSOC: {{ stats.comsoc }}, WIE: {{ stats.wie }}, Sensor: {{ stats.sensor }}, CS: {{ stats.cs }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV Upload History -->
+    <div class="dashboard-card animate__animated animate__fadeInUp">
+        <h3>📄 Recent CSV Uploads</h3>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Uploaded On</th>
+                    <th>Uploaded By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in recent_uploads %}
+                <tr>
+                    <td>{{ file.filename }}</td>
+                    <td>{{ file.uploaded_on }}</td>
+                    <td>{{ file.uploaded_by }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Attendance Section -->
+    <div class="dashboard-card animate__animated animate__fadeInUp">
+        <h3>📝 Attendance Management</h3>
+
+        <!-- Start New Attendance -->
+        <form method="GET" action="{{ url_for('admin_start_attendance') }}" class="mb-3 d-flex gap-2">
+            <input type="date" name="event_date" class="form-control" required>
+            <button type="submit" class="btn btn-primary">Start Attendance (3 mins)</button>
+        </form>
+
+        <!-- Existing Attendance Reports -->
+        {% if attendance_files %}
+        <h5>Previous Attendance Reports</h5>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Download</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in attendance_files %}
+                <tr>
+                    <td>{{ file }}</td>
+                    <td>
+                        <a href="{{ url_for('static', filename='attendance_reports/' + file) }}" class="btn btn-success btn-sm" download>Download</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No attendance reports yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Student Search & Edit -->
+    <div class="dashboard-card animate__animated animate__fadeInUp">
+        <h3>🔍 Search / Edit Students</h3>
+        <form method="GET" action="{{ url_for('admin_search') }}" class="mb-3">
+            <input type="text" name="query" class="form-control mb-2" placeholder="Enter student name or IEEE ID" required>
+            <button type="submit" class="btn btn-success w-100">Search</button>
+        </form>
+
+        {% if search_results %}
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Domain</th>
+                    <th>IEEE ID</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in search_results %}
+                <tr>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.domain }}</td>
+                    <td>{{ student.ieee_id }}</td>
+                    <td>
+                        <a href="{{ url_for('admin_edit_student', student_id=student.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
 </div>
 </body>
 </html>
