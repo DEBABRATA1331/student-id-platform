@@ -36,9 +36,6 @@ def end_attendance(event_date):
 # ---------------- HOME ----------------
 @app.route('/')
 def home():
-    admin_manual = os.path.exists(os.path.join(app.static_folder, "admin_manual.pdf"))
-    student_manual = os.path.exists(os.path.join(app.static_folder, "student_manual.pdf"))
-
     societies = [
         {"name": "IEEE CASS", "logo": "cass.png"},
         {"name": "IEEE COMSOC", "logo": "comsoc.png"},
@@ -52,10 +49,18 @@ def home():
         {"title": "IEEE Day Celebration", "date": "2025-10-02", "description": "Mark your calendars for IEEE Day 2025 events."}
     ]
 
-    return render_template("home.html", admin_manual=admin_manual,
-                           student_manual=student_manual,
-                           societies=societies,
-                           announcements=announcements)
+    # Check for active attendance session
+    active_event_date = None
+    if active_attendance:
+        # pick the latest active event
+        active_event_date = sorted(active_attendance.keys())[-1]
+
+    return render_template(
+        "home.html",
+        societies=societies,
+        announcements=announcements,
+        active_event_date=active_event_date
+    )
 
 # ---------------- ADMIN ----------------
 @app.route("/admin/login", methods=["GET", "POST"])
@@ -107,7 +112,7 @@ def admin_dashboard():
     # ---------------- Recent CSV Uploads ----------------
     recent_uploads = []
     if os.path.exists(UPLOAD_FOLDER):
-        for f in sorted(os.listdir(UPLOAD_FOLDER), reverse=True)[:5]:  # last 5 uploads
+        for f in sorted(os.listdir(UPLOAD_FOLDER), reverse=True)[:5]:
             recent_uploads.append({
                 "filename": f,
                 "uploaded_on": pd.to_datetime(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f)), unit='s').strftime("%Y-%m-%d %H:%M:%S"),
@@ -160,7 +165,6 @@ def admin_dashboard():
         **society_counts
     }
 
-    # ---------------- Render Template ----------------
     return render_template(
         "dashboard.html",
         attendance_files=attendance_files,
