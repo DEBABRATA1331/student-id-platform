@@ -101,7 +101,18 @@ def admin_dashboard():
         else:
             flash("Please upload a valid CSV file.", "danger")
 
+    # Attendance files
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
+
+    # Recent CSV uploads
+    recent_uploads = []
+    if os.path.exists(UPLOAD_FOLDER):
+        for f in sorted(os.listdir(UPLOAD_FOLDER), reverse=True)[:5]:  # last 5 uploads
+            recent_uploads.append({
+                "filename": f,
+                "uploaded_on": pd.to_datetime(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f)), unit='s').strftime("%Y-%m-%d %H:%M:%S"),
+                "uploaded_by": "Admin"
+            })
 
     # Calculate stats
     conn = sqlite3.connect(os.path.join("instance", "students.db"))
@@ -121,6 +132,21 @@ def admin_dashboard():
         c.execute("SELECT COUNT(*) FROM students WHERE Domain LIKE ?", (f"%{soc}%",))
         society_counts[soc.lower()] = c.fetchone()[0]
 
+    # Optional: handle search if query present
+    query = request.args.get("query")
+    search_results = []
+    if query:
+        c.execute("SELECT id, name, Domain, [IEEE ID] FROM students WHERE name LIKE ? OR [IEEE ID] LIKE ?", 
+                  (f"%{query}%", f"%{query}%"))
+        rows = c.fetchall()
+        for row in rows:
+            search_results.append({
+                "id": row[0],
+                "name": row[1],
+                "domain": row[2],
+                "ieee_id": row[3]
+            })
+
     conn.close()
 
     stats = {
@@ -131,7 +157,13 @@ def admin_dashboard():
         **society_counts
     }
 
-    return render_template("dashboard.html", attendance_files=attendance_files, stats=stats)
+    return render_template(
+        "dashboard.html",
+        attendance_files=attendance_files,
+        stats=stats,
+        recent_uploads=recent_uploads,
+        search_results=search_results
+    )
 
 @app.route("/admin/logout")
 def admin_logout():
