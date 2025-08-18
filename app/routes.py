@@ -77,7 +77,7 @@ def admin_dashboard():
     if not session.get("admin"):
         return redirect(url_for("admin_login"))
 
-    # Handle CSV upload
+    # ---------------- Handle CSV Upload ----------------
     if request.method == "POST":
         file = request.files.get("csv_file")
         if file and file.filename.endswith(".csv"):
@@ -101,10 +101,10 @@ def admin_dashboard():
         else:
             flash("Please upload a valid CSV file.", "danger")
 
-    # Attendance files
+    # ---------------- Attendance Files ----------------
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
 
-    # Recent CSV uploads
+    # ---------------- Recent CSV Uploads ----------------
     recent_uploads = []
     if os.path.exists(UPLOAD_FOLDER):
         for f in sorted(os.listdir(UPLOAD_FOLDER), reverse=True)[:5]:  # last 5 uploads
@@ -114,9 +114,10 @@ def admin_dashboard():
                 "uploaded_by": "Admin"
             })
 
-    # Calculate stats
+    # ---------------- Statistics ----------------
     conn = sqlite3.connect(os.path.join("instance", "students.db"))
     c = conn.cursor()
+
     c.execute("SELECT COUNT(*) FROM students")
     total_students = c.fetchone()[0]
 
@@ -132,12 +133,14 @@ def admin_dashboard():
         c.execute("SELECT COUNT(*) FROM students WHERE Domain LIKE ?", (f"%{soc}%",))
         society_counts[soc.lower()] = c.fetchone()[0]
 
-    # Optional: handle search if query present
+    # ---------------- Search Functionality ----------------
     query = request.args.get("query")
     search_results = []
     if query:
-        c.execute("SELECT id, name, Domain, [IEEE ID] FROM students WHERE name LIKE ? OR [IEEE ID] LIKE ?", 
-                  (f"%{query}%", f"%{query}%"))
+        c.execute(
+            "SELECT id, name, Domain, [IEEE ID] FROM students WHERE name LIKE ? OR [IEEE ID] LIKE ?", 
+            (f"%{query}%", f"%{query}%")
+        )
         rows = c.fetchall()
         for row in rows:
             search_results.append({
@@ -157,6 +160,7 @@ def admin_dashboard():
         **society_counts
     }
 
+    # ---------------- Render Template ----------------
     return render_template(
         "dashboard.html",
         attendance_files=attendance_files,
