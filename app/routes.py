@@ -76,6 +76,7 @@ def admin_login():
             flash("Invalid credentials!", "danger")
     return render_template("login.html")
 
+# ---------------- ADMIN ROUTES ----------------
 @app.route("/admin/dashboard", methods=["GET", "POST"])
 def admin_dashboard():
     if not session.get("admin"):
@@ -108,7 +109,37 @@ def admin_dashboard():
     # Attendance report files
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
 
-    return render_template("dashboard.html", attendance_files=attendance_files)
+    # --- Calculate stats ---
+    conn = sqlite3.connect(os.path.join("instance", "students.db"))
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM students")
+    total_students = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM students WHERE Category='Tech'")
+    tech = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM students WHERE Category='Non-Tech'")
+    non_tech = c.fetchone()[0]
+
+    # Students per society (example domains)
+    societies = ["CASS", "COMSOC", "WIE", "Sensor", "CS"]
+    society_counts = {}
+    for soc in societies:
+        c.execute("SELECT COUNT(*) FROM students WHERE Domain LIKE ?", (f"%{soc}%",))
+        society_counts[soc.lower()] = c.fetchone()[0]
+
+    conn.close()
+
+    stats = {
+        "total_students": total_students,
+        "total_id_cards": total_students,  # Assuming ID card generated for all uploaded
+        "tech": tech,
+        "non_tech": non_tech,
+        **society_counts
+    }
+
+    return render_template("dashboard.html", attendance_files=attendance_files, stats=stats)
+
 
 @app.route("/admin/logout")
 def admin_logout():
