@@ -19,12 +19,9 @@ ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
 
 # ---------------- ATTENDANCE ----------------
-# In-memory storage for active attendance sessions
-# Format: {event_date: {student_id: status}}
 active_attendance = {}
 
 def end_attendance(event_date):
-    """Automatically save attendance CSV after session ends."""
     if event_date in active_attendance:
         output = io.StringIO()
         writer = csv.writer(output)
@@ -34,8 +31,7 @@ def end_attendance(event_date):
         report_file = f"attendance_{event_date}.csv"
         with open(os.path.join("static/attendance_reports", report_file), "w", newline="") as f:
             f.write(output.getvalue())
-        print(f"Attendance session for {event_date} ended. Report saved!")
-        del active_attendance[event_date]  # Remove session after saving
+        del active_attendance[event_date]
 
 # ---------------- HOME ----------------
 @app.route('/')
@@ -61,7 +57,7 @@ def home():
                            societies=societies,
                            announcements=announcements)
 
-# ---------------- ADMIN ROUTES ----------------
+# ---------------- ADMIN ----------------
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
@@ -76,7 +72,6 @@ def admin_login():
             flash("Invalid credentials!", "danger")
     return render_template("login.html")
 
-# ---------------- ADMIN ROUTES ----------------
 @app.route("/admin/dashboard", methods=["GET", "POST"])
 def admin_dashboard():
     if not session.get("admin"):
@@ -106,10 +101,9 @@ def admin_dashboard():
         else:
             flash("Please upload a valid CSV file.", "danger")
 
-    # Attendance report files
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
 
-    # --- Calculate stats ---
+    # Calculate stats
     conn = sqlite3.connect(os.path.join("instance", "students.db"))
     c = conn.cursor()
     c.execute("SELECT COUNT(*) FROM students")
@@ -121,10 +115,9 @@ def admin_dashboard():
     c.execute("SELECT COUNT(*) FROM students WHERE Category='Non-Tech'")
     non_tech = c.fetchone()[0]
 
-    # Students per society (example domains)
-    societies = ["CASS", "COMSOC", "WIE", "Sensor", "CS"]
+    societies_list = ["CASS", "COMSOC", "WIE", "Sensor", "CS"]
     society_counts = {}
-    for soc in societies:
+    for soc in societies_list:
         c.execute("SELECT COUNT(*) FROM students WHERE Domain LIKE ?", (f"%{soc}%",))
         society_counts[soc.lower()] = c.fetchone()[0]
 
@@ -132,7 +125,7 @@ def admin_dashboard():
 
     stats = {
         "total_students": total_students,
-        "total_id_cards": total_students,  # Assuming ID card generated for all uploaded
+        "total_id_cards": total_students,
         "tech": tech,
         "non_tech": non_tech,
         **society_counts
@@ -140,17 +133,15 @@ def admin_dashboard():
 
     return render_template("dashboard.html", attendance_files=attendance_files, stats=stats)
 
-
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin", None)
     flash("Logged out successfully!", "info")
     return redirect(url_for("admin_login"))
 
-# ---------------- ATTENDANCE ROUTES ----------------
+# ---------------- ATTENDANCE ----------------
 @app.route("/admin/start_attendance")
 def admin_start_attendance():
-    """Admin starts attendance for a given date from dashboard."""
     if not session.get("admin"):
         return redirect(url_for("admin_login"))
 
@@ -169,30 +160,26 @@ def admin_start_attendance():
 
 @app.route("/attendance/<event_date>")
 def attendance_page(event_date):
-    """Student-facing attendance page to mark themselves present/absent."""
     conn = sqlite3.connect(os.path.join("instance", "students.db"))
     c = conn.cursor()
     c.execute("SELECT id, name FROM students")
     students = c.fetchall()
     conn.close()
-
     return render_template("attendance.html", event_date=event_date, students=students)
 
 @app.route("/attendance/mark/<event_date>/<int:student_id>")
 def mark_attendance(event_date, student_id):
-    """Student marks themselves present."""
     if event_date in active_attendance:
         active_attendance[event_date][student_id] = "Present"
         return f"{student_id} marked as Present for {event_date}"
     return "Attendance session not active!"
 
-# ---------------- USER ROUTES ----------------
+# ---------------- USER ----------------
 @app.route("/user/search", methods=["GET", "POST"])
 def user_search():
     if request.method == "POST":
         user_answer = request.form.get("captcha_answer")
         correct_answer = session.get("captcha_result")
-
         if str(user_answer) != str(correct_answer):
             flash("❌ Incorrect CAPTCHA! Please try again.", "danger")
             return redirect(url_for("user_search"))
