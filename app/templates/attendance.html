@@ -5,6 +5,24 @@
     <title>Attendance for {{ event_date }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+<div class="container mt-5">
+    <!-- Home Button -->
+    <div class="mb-3">
+        <a href="{{ url_for('home') }}" class="btn btn-outline-primary">
+            🏠 Home
+        </a>
+    </div>
+
+    <h2 class="mb-4">Attendance for {{ event_date }}</h2>
+
+    <!-- Attendance Form -->
+    <form method="POST" class="card p-4 shadow-sm mb-4">
+        <!-- ... your existing form ... -->
+    </form>
+
+    <!-- Summary and Table ... -->
+</div>
+
 <body>
 <div class="container mt-5">
     <h2 class="mb-4">Attendance for {{ event_date }}</h2>
@@ -39,15 +57,15 @@
     <!-- Attendance Summary -->
     <div class="mb-3">
         <h5>Summary:</h5>
-        <p>Total Marked: <span id="total-count">{{ attendance_summary.total }}</span></p>
-        <p>Present: <span id="present-count">{{ attendance_summary.present }}</span></p>
-        <p>Absent: <span id="absent-count">{{ attendance_summary.absent }}</span></p>
+        <p>Total Marked: {{ attendance_summary.total }}</p>
+        <p>Present: {{ attendance_summary.present }}</p>
+        <p>Absent: {{ attendance_summary.absent }}</p>
     </div>
 
     <!-- Live Attendance Table -->
     <div class="card p-3 shadow-sm">
         <h5 class="mb-3">Marked Attendance</h5>
-        <table class="table table-bordered table-striped" id="attendance-table">
+        <table class="table table-bordered table-striped">
             <thead>
                 <tr>
                     <th>Student ID</th>
@@ -55,7 +73,7 @@
                     <th>Status</th>
                 </tr>
             </thead>
-            <tbody id="attendance-body">
+            <tbody>
                 {% for record in attendance_records %}
                 <tr>
                     <td>{{ record.student_id }}</td>
@@ -72,26 +90,5 @@
         </table>
     </div>
 </div>
-
-<script>
-    // Auto-refresh every 10 seconds
-    setInterval(() => {
-        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                // Update table body
-                const newBody = doc.getElementById('attendance-body');
-                document.getElementById('attendance-body').innerHTML = newBody.innerHTML;
-
-                // Update summary counts
-                document.getElementById('total-count').textContent = doc.getElementById('total-count').textContent;
-                document.getElementById('present-count').textContent = doc.getElementById('present-count').textContent;
-                document.getElementById('absent-count').textContent = doc.getElementById('absent-count').textContent;
-            });
-    }, 10000); // 10 seconds
-</script>
 </body>
 </html>
