@@ -27,13 +27,6 @@
             animation: fadeInUp 1s ease-in-out;
             position: relative;
         }
-        .profile-pic {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-        }
         .domain-badge {
             display: inline-block;
             padding: 5px 10px;
@@ -90,12 +83,6 @@
 </head>
 <body>
 <div class="id-card animate__animated animate__fadeInUp">
-    <!-- Profile Picture -->
-    {% if student.profile_pic %}
-        <img src="{{ url_for('static', filename='profile_pics/' + student.profile_pic) }}" class="profile-pic" alt="Profile Picture">
-    {% else %}
-        <img src="{{ url_for('static', filename='images/default_profile.png') }}" class="profile-pic" alt="Profile Picture">
-    {% endif %}
 
     <!-- Organization Logo & Name -->
     <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="org-logo">

@@ -7,19 +7,91 @@
 </head>
 <body>
 <div class="container mt-5">
-    <h2>Attendance for {{ event_date }}</h2>
-    <form method="POST">
+    <h2 class="mb-4">Attendance for {{ event_date }}</h2>
+
+    <!-- Attendance Form -->
+    <form method="POST" class="card p-4 shadow-sm mb-4">
         <div class="mb-3">
-            <label>Student Name:</label>
-            <input type="text" name="student_name" class="form-control" required>
+            <label for="student_id" class="form-label">Select Student:</label>
+            <select name="student_id" id="student_id" class="form-select" required>
+                <option value="">-- Choose Student --</option>
+                {% for student in students %}
+                    <option value="{{ student[0] }}">{{ student[1] }} (ID: {{ student[0] }})</option>
+                {% endfor %}
+            </select>
         </div>
+
         <div class="mb-3">
-            <label>Status:</label><br>
-            <input type="radio" name="status" value="Present" required> Present
-            <input type="radio" name="status" value="Absent" required> Absent
+            <label class="form-label">Status:</label><br>
+            <div class="form-check form-check-inline">
+                <input type="radio" name="status" value="Present" id="present" class="form-check-input" required>
+                <label for="present" class="form-check-label">Present</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="radio" name="status" value="Absent" id="absent" class="form-check-input" required>
+                <label for="absent" class="form-check-label">Absent</label>
+            </div>
         </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
+
+        <button type="submit" class="btn btn-primary">Mark Attendance</button>
     </form>
+
+    <!-- Attendance Summary -->
+    <div class="mb-3">
+        <h5>Summary:</h5>
+        <p>Total Marked: <span id="total-count">{{ attendance_summary.total }}</span></p>
+        <p>Present: <span id="present-count">{{ attendance_summary.present }}</span></p>
+        <p>Absent: <span id="absent-count">{{ attendance_summary.absent }}</span></p>
+    </div>
+
+    <!-- Live Attendance Table -->
+    <div class="card p-3 shadow-sm">
+        <h5 class="mb-3">Marked Attendance</h5>
+        <table class="table table-bordered table-striped" id="attendance-table">
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="attendance-body">
+                {% for record in attendance_records %}
+                <tr>
+                    <td>{{ record.student_id }}</td>
+                    <td>{{ record.name }}</td>
+                    <td>{{ record.status }}</td>
+                </tr>
+                {% endfor %}
+                {% if attendance_records|length == 0 %}
+                <tr>
+                    <td colspan="3" class="text-center">No attendance marked yet.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
+<script>
+    // Auto-refresh every 10 seconds
+    setInterval(() => {
+        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // Update table body
+                const newBody = doc.getElementById('attendance-body');
+                document.getElementById('attendance-body').innerHTML = newBody.innerHTML;
+
+                // Update summary counts
+                document.getElementById('total-count').textContent = doc.getElementById('total-count').textContent;
+                document.getElementById('present-count').textContent = doc.getElementById('present-count').textContent;
+                document.getElementById('absent-count').textContent = doc.getElementById('absent-count').textContent;
+            });
+    }, 10000); // 10 seconds
+</script>
 </body>
 </html>

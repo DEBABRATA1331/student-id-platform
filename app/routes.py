@@ -198,14 +198,80 @@ def admin_start_attendance():
         flash(f"Attendance session for {event_date} started! Students have 3 minutes.", "success")
     return redirect(url_for("admin_dashboard"))
 
-@app.route("/attendance/<event_date>")
-def attendance_page(event_date):
+# ---------------- ATTENDANCE ----------------
+@app.route("/attendance/<event_date>", methods=["GET", "POST"])
+def attendance(event_date):
     conn = sqlite3.connect(os.path.join("instance", "students.db"))
     c = conn.cursor()
+
+    if request.method == "POST":
+        student_id = request.form.get("student_id")
+        status = request.form.get("status")  # "Present" or "Absent"
+
+        if not student_id:
+            flash("⚠ Invalid student ID!", "danger")
+            return redirect(url_for("attendance", event_date=event_date))
+
+        # Store in active_attendance (temporary session)
+        if event_date in active_attendance:
+            active_attendance[event_date][student_id] = status
+
+        # Store in DB
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS attendance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER,
+                event_date TEXT,
+                status TEXT
+            )
+        """)
+        c.execute(
+            "INSERT INTO attendance (student_id, event_date, status) VALUES (?, ?, ?)",
+            (student_id, event_date, status)
+        )
+        conn.commit()
+        flash(f"✅ Attendance marked as {status} for Student {student_id}", "success")
+        return redirect(url_for("attendance", event_date=event_date))
+
+    # GET request → show all students
     c.execute("SELECT id, name FROM students")
     students = c.fetchall()
+
+    # Fetch attendance records for this event_date
+    c.execute("SELECT student_id, status FROM attendance WHERE event_date = ?", (event_date,))
+    attendance_records_db = c.fetchall()
+
+    # Merge with student names and calculate counts
+    attendance_records = []
+    present_count = 0
+    absent_count = 0
+    for rec in attendance_records_db:
+        student_id, status = rec
+        name = next((s[1] for s in students if s[0] == student_id), "Unknown")
+        attendance_records.append({"student_id": student_id, "name": name, "status": status})
+        if status == "Present":
+            present_count += 1
+        elif status == "Absent":
+            absent_count += 1
+
+    attendance_summary = {
+        "total": len(attendance_records),
+        "present": present_count,
+        "absent": absent_count
+    }
+
     conn.close()
-    return render_template("attendance.html", event_date=event_date, students=students)
+
+    return render_template(
+        "attendance.html",
+        event_date=event_date,
+        students=students,
+        attendance_records=attendance_records,
+        attendance_summary=attendance_summary
+    )
+
+
+
 
 @app.route("/attendance/mark/<event_date>/<int:student_id>")
 def mark_attendance(event_date, student_id):
