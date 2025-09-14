@@ -394,3 +394,97 @@ def user_download(student_id):
         download_name=f"idcard_{student[1]}.pdf",
         mimetype="application/pdf"
     )
+@app.route("/attendance/")
+def attendance():
+    event_date = request.args.get("event_date")
+
+    if not event_date:
+        return "❌ Please provide ?event_date=YYYY-MM-DD", 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Fetch all students
+    cursor.execute("SELECT id, name FROM students")
+    students = cursor.fetchall()
+
+    # Fetch attendance records
+    cursor.execute("""
+        SELECT a.student_id, s.name, a.status
+        FROM attendance a
+        JOIN students s ON a.student_id = s.id
+        WHERE a.event_date = ?
+    """, (event_date,))
+    attendance_records = cursor.fetchall()
+
+    # Attendance summary
+    cursor.execute("""
+        SELECT COUNT(*), 
+               SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), 
+               SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) 
+        FROM attendance WHERE event_date = ?
+    """, (event_date,))
+    total, present, absent = cursor.fetchone() or (0, 0, 0)
+
+    conn.close()
+
+    attendance_summary = {
+        "total": total or 0,
+        "present": present or 0,
+        "absent": absent or 0,
+    }
+
+    return render_template(
+        "attendance.html",
+        students=students,
+        event_date=event_date,
+        attendance_records=attendance_records,   # 🔹 renamed to match your table
+        attendance_summary=attendance_summary
+    )
+@app.route("/attendance/mark/<event_date>", methods=["POST"])
+def mark_attendance(event_date):
+    student_id = request.form.get("student_id")
+    status = request.form.get("status")
+
+    if not student_id or not status:
+        return jsonify({"error": "Missing data"}), 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Insert or update attendance
+    cursor.execute("""
+        INSERT INTO attendance (student_id, event_date, status)
+        VALUES (?, ?, ?)
+        ON CONFLICT(student_id, event_date) DO UPDATE SET status=excluded.status
+    """, (student_id, event_date, status))
+
+    conn.commit()
+
+    # Fetch updated records
+    cursor.execute("""
+        SELECT a.student_id, s.name, a.status
+        FROM attendance a
+        JOIN students s ON a.student_id = s.id
+        WHERE a.event_date = ?
+    """, (event_date,))
+    attendance_records = cursor.fetchall()
+
+    # Fetch updated summary
+    cursor.execute("""
+        SELECT COUNT(*), 
+               SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), 
+               SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) 
+        FROM attendance WHERE event_date = ?
+    """, (event_date,))
+    total, present, absent = cursor.fetchone() or (0, 0, 0)
+
+    conn.close()
+
+    # Render partial table
+    table_html = render_template("attendance_table.html", attendance_records=attendance_records)
+
+    return jsonify({
+        "summary": {"total": total, "present": present, "absent": absent},
+        "table_html": table_html
+    })
