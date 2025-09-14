@@ -321,3 +321,34 @@ def search():
         num1=num1, num2=num2,
         student=student
     )
+@app.route("/admin/get_stats")
+def get_stats():
+    """Return JSON stats for AJAX calls in dashboard"""
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+
+    c.execute("SELECT COUNT(*) FROM students")
+    total_students = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM students WHERE Category='Tech'")
+    tech = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM students WHERE Category='Non-Tech'")
+    non_tech = c.fetchone()[0]
+
+    societies_list = ["CASS", "COMSOC", "WIE", "Sensor", "CS"]
+    society_counts = {}
+    for soc in societies_list:
+        c.execute("SELECT COUNT(*) FROM students WHERE Domain LIKE ?", (f"%{soc}%",))
+        society_counts[soc.lower()] = c.fetchone()[0]
+
+    conn.close()
+
+    stats = {
+        "total_students": total_students,
+        "tech": tech,
+        "non_tech": non_tech,
+        **society_counts
+    }
+    return jsonify(stats)
+    
