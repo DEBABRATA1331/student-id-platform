@@ -401,7 +401,7 @@ def attendance_page():
     if not event_date:
         return "❌ Please provide ?event_date=YYYY-MM-DD", 400
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DATABASE)  # ✅ FIXED here
     cursor = conn.cursor()
 
     # Fetch all students
@@ -429,18 +429,19 @@ def attendance_page():
     conn.close()
 
     attendance_summary = {
-        "total": total or 0,
-        "present": present or 0,
-        "absent": absent or 0,
+        "total": total,
+        "present": present,
+        "absent": absent,
     }
 
     return render_template(
         "attendance.html",
         students=students,
         event_date=event_date,
-        attendance_records=attendance_records,   # 🔹 renamed to match your table
+        attendance_records=attendance_records,
         attendance_summary=attendance_summary
     )
+
 @app.route("/attendance/mark/<event_date>", methods=["POST"])
 def mark_attendance(event_date):
     student_id = request.form.get("student_id")
