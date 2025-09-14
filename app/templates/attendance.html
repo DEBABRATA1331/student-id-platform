@@ -14,8 +14,29 @@
 
     <h2 class="mb-4">Attendance for {{ event_date }}</h2>
 
-    <!-- Attendance Form -->
+    <!-- 🔹 Student Self-Mark Form (only if session active) -->
+    {% if active_session and active_session.expires > now %}
+    <div class="card p-4 shadow-sm mb-4 border-success">
+        <h5 class="text-success">📝 Student Self Attendance (Active for 3 min)</h5>
+        <form method="POST" action="{{ url_for('student_self_mark', event_date=event_date) }}">
+            <div class="mb-3">
+                <label for="self_student_id" class="form-label">Select Your Name:</label>
+                <select name="student_id" id="self_student_id" class="form-select" required>
+                    <option value="">-- Choose Student --</option>
+                    {% for student in students %}
+                        <option value="{{ student[0] }}">{{ student[1] }} (ID: {{ student[0] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success w-100">✅ Mark Myself Present</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- 🔹 Admin Manual Mark Form -->
+    {% if session.admin %}
     <form id="attendanceForm" class="card p-4 shadow-sm mb-4">
+        <h5>✍️ Admin Manual Mark</h5>
         <div class="mb-3">
             <label for="student_id" class="form-label">Select Student:</label>
             <select name="student_id" id="student_id" class="form-select" required>
@@ -40,6 +61,7 @@
 
         <button type="submit" class="btn btn-primary">Mark Attendance</button>
     </form>
+    {% endif %}
 
     <!-- Attendance Summary -->
     <div id="summary" class="mb-3">
@@ -50,15 +72,22 @@
     </div>
 
     <!-- Live Attendance Table -->
-    <div class="card p-3 shadow-sm">
-        <h5 class="mb-3">Marked Attendance</h5>
+    <div class="card p-3 shadow-sm mb-3">
+        <h5 class="mb-3">📋 Marked Attendance</h5>
         <div id="attendanceTable">
             {% include 'attendance_table.html' %}
         </div>
     </div>
+
+    <!-- 🔹 Download Report -->
+    <a href="{{ url_for('attendance_report', event_date=event_date) }}" 
+       class="btn btn-danger w-100 mt-3">
+        📄 Download Attendance Report
+    </a>
 </div>
 
-<!-- AJAX Script -->
+<!-- AJAX Script (Admin Manual Form only) -->
+{% if session.admin %}
 <script>
 document.getElementById("attendanceForm").addEventListener("submit", function(event) {
     event.preventDefault();
@@ -88,5 +117,6 @@ document.getElementById("attendanceForm").addEventListener("submit", function(ev
     .catch(error => console.error("Error:", error));
 });
 </script>
+{% endif %}
 </body>
 </html>

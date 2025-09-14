@@ -9,6 +9,7 @@ from app.utils import generate_qr_code, generate_idcard_pdf
 import threading
 import io
 import csv
+import datetime
 
 # ---------------- CONFIG ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -489,3 +490,82 @@ def mark_attendance(event_date):
         "summary": {"total": total, "present": present, "absent": absent},
         "table_html": table_html
     })
+@app.route("/attendance/start", methods=["POST"])
+def start_attendance_session():
+    event_date = request.form.get("event_date")
+    if not event_date:
+        flash("Event date is required", "danger")
+        return redirect(url_for("admin_dashboard"))
+
+    # Session expires after 3 min
+    expiry_time = datetime.datetime.now() + datetime.timedelta(minutes=3)
+    active_attendance[event_date] = {"expires": expiry_time}
+
+    flash(f"Attendance session started for {event_date} (valid 3 min)", "success")
+    return redirect(url_for("attendance_page", event_date=event_date))
+@app.route("/attendance/self_mark/<event_date>", methods=["POST"])
+def student_self_mark(event_date):
+    student_id = request.form.get("student_id")
+
+    # ✅ check if session active
+    session_info = active_attendance.get(event_date)
+    if not session_info or session_info["expires"] < datetime.datetime.now():
+        flash("❌ Attendance session expired or not active.", "danger")
+        return redirect(url_for("home"))
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO attendance (student_id, event_date, status)
+        VALUES (?, ?, 'Present')
+        ON CONFLICT(student_id, event_date) DO UPDATE SET status='Present'
+    """, (student_id, event_date))
+
+    conn.commit()
+    conn.close()
+
+    flash("✅ Attendance marked successfully!", "success")
+    return redirect(url_for("home"))
+@app.route("/attendance/manual_add/<event_date>", methods=["POST"])
+def admin_manual_add(event_date):
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
+
+    student_id = request.form.get("student_id")
+    status = request.form.get("status", "Present")
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO attendance (student_id, event_date, status)
+        VALUES (?, ?, ?)
+        ON CONFLICT(student_id, event_date) DO UPDATE SET status=excluded.status
+    """, (student_id, event_date, status))
+
+    conn.commit()
+    conn.close()
+
+    flash("✅ Student added manually.", "success")
+    return redirect(url_for("attendance_page", event_date=event_date))
+from flask import send_file
+
+@app.route("/attendance/report/<event_date>")
+def attendance_report(event_date):
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT s.name, a.student_id, a.status
+        FROM attendance a
+        JOIN students s ON a.student_id = s.id
+        WHERE a.event_date = ?
+    """, (event_date,))
+    records = cursor.fetchall()
+    conn.close()
+
+    # Generate PDF using your existing utility
+    pdf_bytes = generate_idcard_pdf(records)  # ⚠️ replace with generate_attendance_pdf
+    return send_file(io.BytesIO(pdf_bytes), as_attachment=True, download_name=f"attendance_{event_date}.pdf")
+    
+    

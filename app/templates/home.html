@@ -54,7 +54,6 @@
             border-left: 4px solid #185a9d;
             border-radius: 5px;
         }
-        /* Pulsing animation for active attendance button */
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 0 rgba(24,90,157, 0.4); }
             70% { transform: scale(1.05); box-shadow: 0 0 20px rgba(24,90,157, 0.6); }
@@ -89,14 +88,36 @@
     <!-- IEEE Societies Section -->
     <h4 class="mt-4">IEEE Societies</h4>
     <div class="row row-cols-2 row-cols-md-3 g-3 mb-3">
-        {% for society in societies %}
         <div class="col">
             <div class="society-card">
-                <img src="{{ url_for('static', filename='images/' + society.logo) }}" alt="{{ society.name }} Logo">
-                <h6>{{ society.name }}</h6>
+                <img src="{{ url_for('static', filename='images/IEEE WIE Logo.png') }}" alt="IEEE WIE Logo">
+                <h6>IEEE WIE</h6>
             </div>
         </div>
-        {% endfor %}
+        <div class="col">
+            <div class="society-card">
+                <img src="{{ url_for('static', filename='images/CAS Logo (1).png') }}" alt="CAS Logo">
+                <h6>CAS</h6>
+            </div>
+        </div>
+        <div class="col">
+            <div class="society-card">
+                <img src="{{ url_for('static', filename='images/Comsoc Logo (1).png') }}" alt="ComSoc Logo">
+                <h6>ComSoc</h6>
+            </div>
+        </div>
+        <div class="col">
+            <div class="society-card">
+                <img src="{{ url_for('static', filename='images/Cs.png') }}" alt="Computer Society Logo">
+                <h6>Computer Society</h6>
+            </div>
+        </div>
+        <div class="col">
+            <div class="society-card">
+                <img src="{{ url_for('static', filename='images/Sensor Council.png') }}" alt="Sensor Council Logo">
+                <h6>Sensor Council</h6>
+            </div>
+        </div>
     </div>
 
     <!-- Announcements Section -->
