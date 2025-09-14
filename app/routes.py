@@ -324,7 +324,7 @@ def search():
             }
             session["captcha_num1"] = random.randint(1, 5)
             session["captcha_num2"] = random.randint(1, 5)
-            return render_template("id_card.html", student=student)
+            return render_template("idcard.html", student=student)
         else:
             flash("⚠️ No student record found.", "warning")
             session["captcha_num1"] = random.randint(1, 5)
