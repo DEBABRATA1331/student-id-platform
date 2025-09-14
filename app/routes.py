@@ -289,12 +289,11 @@ def search():
         # Validate CAPTCHA
         if not captcha_answer.isdigit() or int(captcha_answer) != (num1 + num2):
             flash("❌ Incorrect CAPTCHA. Please try again.", "danger")
-            # Generate new random numbers for next attempt
-            num1, num2 = random.randint(1, 5), random.randint(1, 5)
             return render_template(
                 "search.html",
                 all_student_names=all_names,
-                num1=num1, num2=num2,
+                num1=random.randint(1, 5),
+                num2=random.randint(1, 5),
                 student=None
             )
 
@@ -320,8 +319,6 @@ def search():
             }
         else:
             flash("⚠️ No student record found.", "warning")
-            # Generate new CAPTCHA for next attempt
-            num1, num2 = random.randint(1, 5), random.randint(1, 5)
 
     else:
         # For GET requests, generate initial CAPTCHA numbers
@@ -333,6 +330,7 @@ def search():
         num1=num1, num2=num2,
         student=student
     )
+
 
 @app.route("/admin/get_stats")
 def get_stats():
