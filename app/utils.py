@@ -24,7 +24,6 @@ def start_attendance():
     return redirect(url_for("admin_dashboard"))
 
 
-# ---------------- Student: Mark Attendance ----------------
 @app.route("/mark_attendance", methods=["POST"])
 def mark_attendance():
     ieee_id = request.form.get("ieee_id")
@@ -39,7 +38,10 @@ def mark_attendance():
         flash("No active attendance session.")
         return redirect(url_for("student_portal"))
 
-    start_time, end_time = map(datetime.datetime.fromisoformat, session_data)
+    start_time_str, end_time_str = session_data
+    start_time = datetime.datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S.%f")
+    end_time = datetime.datetime.strptime(end_time_str, "%Y-%m-%d %H:%M:%S.%f")
+
     now = datetime.datetime.now()
     if not (start_time <= now <= end_time):
         flash("Attendance window closed.")
@@ -53,6 +55,7 @@ def mark_attendance():
 
     flash("Attendance marked successfully!")
     return redirect(url_for("student_portal"))
+
 
 
 # ---------------- Admin: Manual Attendance ----------------
