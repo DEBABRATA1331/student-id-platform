@@ -351,4 +351,9 @@ def get_stats():
         **society_counts
     }
     return jsonify(stats)
+@app.route("/admin/get_attendance_reports")
+def get_attendance_reports():
+    """Return list of attendance report files for dashboard AJAX"""
+    attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
+    return jsonify({"attendance_files": attendance_files})
     
