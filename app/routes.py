@@ -52,9 +52,7 @@ def home():
         {"title": "IEEE Day Celebration", "date": "2025-10-17", "description": "Mark your calendars for IEEE Day 2025 events."}
     ]
 
-    active_event_date = None
-    if active_attendance:
-        active_event_date = sorted(active_attendance.keys())[-1]
+    active_event_date = sorted(active_attendance.keys())[-1] if active_attendance else None
 
     return render_template(
         "home.html",
@@ -91,8 +89,6 @@ def admin_dashboard():
             file.save(filepath)
 
             df = pd.read_csv(filepath)
-
-            # Clean headers
             df.columns = df.columns.str.strip().str.lower()
 
             students = []
@@ -151,14 +147,7 @@ def admin_dashboard():
             "SELECT id, name, Domain, [IEEE ID] FROM students WHERE name LIKE ? OR [IEEE ID] LIKE ?", 
             (f"%{query}%", f"%{query}%")
         )
-        rows = c.fetchall()
-        for row in rows:
-            search_results.append({
-                "id": row[0],
-                "name": row[1],
-                "domain": row[2],
-                "ieee_id": row[3]
-            })
+        search_results = [{"id": r[0], "name": r[1], "domain": r[2], "ieee_id": r[3]} for r in c.fetchall()]
 
     conn.close()
 
@@ -208,16 +197,20 @@ def attendance(event_date):
         )
         conn.commit()
 
-        # Get updated attendance
-        c.execute("SELECT a.student_id, s.name, a.status FROM attendance a JOIN students s ON a.student_id = s.id WHERE event_date = ?", (event_date,))
+        c.execute(
+            "SELECT a.student_id, s.name, a.status FROM attendance a JOIN students s ON a.student_id = s.id WHERE event_date = ?",
+            (event_date,)
+        )
         records = c.fetchall()
 
-        c.execute("SELECT COUNT(*), SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) FROM attendance WHERE event_date = ?", (event_date,))
+        c.execute(
+            "SELECT COUNT(*), SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) FROM attendance WHERE event_date = ?",
+            (event_date,)
+        )
         total, present, absent = c.fetchone()
         conn.close()
 
         table_html = render_template("attendance_table.html", attendance_records=records)
-
         return jsonify({
             "summary": {"total": total or 0, "present": present or 0, "absent": absent or 0},
             "table_html": table_html
@@ -231,10 +224,16 @@ def attendance(event_date):
     c.execute("SELECT id, name FROM students")
     students = c.fetchall()
 
-    c.execute("SELECT a.student_id, s.name, a.status FROM attendance a JOIN students s ON a.student_id = s.id WHERE event_date = ?", (event_date,))
+    c.execute(
+        "SELECT a.student_id, s.name, a.status FROM attendance a JOIN students s ON a.student_id = s.id WHERE event_date = ?",
+        (event_date,)
+    )
     attendance_records = c.fetchall()
 
-    c.execute("SELECT COUNT(*), SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) FROM attendance WHERE event_date = ?", (event_date,))
+    c.execute(
+        "SELECT COUNT(*), SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) FROM attendance WHERE event_date = ?",
+        (event_date,)
+    )
     total, present, absent = c.fetchone()
     conn.close()
 
@@ -248,15 +247,20 @@ def attendance_refresh(event_date):
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    c.execute("SELECT a.student_id, s.name, a.status FROM attendance a JOIN students s ON a.student_id = s.id WHERE event_date = ?", (event_date,))
+    c.execute(
+        "SELECT a.student_id, s.name, a.status FROM attendance a JOIN students s ON a.student_id = s.id WHERE event_date = ?",
+        (event_date,)
+    )
     attendance_records = c.fetchall()
 
-    c.execute("SELECT COUNT(*), SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) FROM attendance WHERE event_date = ?", (event_date,))
+    c.execute(
+        "SELECT COUNT(*), SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) FROM attendance WHERE event_date = ?",
+        (event_date,)
+    )
     total, present, absent = c.fetchone()
     conn.close()
 
     table_html = render_template("attendance_table.html", attendance_records=attendance_records)
-
     return jsonify({
         "summary": {"total": total or 0, "present": present or 0, "absent": absent or 0},
         "table_html": table_html
@@ -265,18 +269,13 @@ def attendance_refresh(event_date):
 # ---------------- SEARCH ----------------
 @app.route("/search", methods=["GET", "POST"])
 def search():
-    import random
-    import sqlite3
-    from flask import render_template, request, flash, session
-
-    # Fetch all student names for autocomplete
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     c.execute("SELECT name FROM students ORDER BY name")
     all_names = [row[0] for row in c.fetchall()]
     conn.close()
 
-    # Generate CAPTCHA numbers and store in session for POST validation
+    # Generate CAPTCHA numbers
     if "captcha_num1" not in session or "captcha_num2" not in session:
         session["captcha_num1"] = random.randint(1, 5)
         session["captcha_num2"] = random.randint(1, 5)
@@ -292,7 +291,6 @@ def search():
         # Validate CAPTCHA
         if not captcha_answer.isdigit() or int(captcha_answer) != (num1 + num2):
             flash("❌ Incorrect CAPTCHA. Please try again.", "danger")
-            # regenerate CAPTCHA
             session["captcha_num1"] = random.randint(1, 5)
             session["captcha_num2"] = random.randint(1, 5)
             return render_template(
@@ -303,39 +301,35 @@ def search():
                 student=None
             )
 
-# Search student
-conn = sqlite3.connect(DATABASE)
-c = conn.cursor()
-if ieee_id:
-    c.execute("SELECT id, name, ieee_id, Domain, [Joining Date], Category, QR FROM students WHERE ieee_id = ?", (ieee_id,))
-else:
-    c.execute("SELECT id, name, ieee_id, Domain, [Joining Date], Category, QR FROM students WHERE name LIKE ?", (f"%{name}%",))
-row = c.fetchone()
-conn.close()
+        # Search student
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        if ieee_id:
+            c.execute("SELECT id, name, ieee_id, Domain, [Joining Date], Category, QR FROM students WHERE ieee_id = ?", (ieee_id,))
+        else:
+            c.execute("SELECT id, name, ieee_id, Domain, [Joining Date], Category, QR FROM students WHERE name LIKE ?", (f"%{name}%",))
+        row = c.fetchone()
+        conn.close()
 
-if row:
-    student = {
-        "id": row[0],
-        "name": row[1],
-        "ieee_id": row[2],
-        "domain": row[3],
-        "joining_date": row[4],
-        "category": row[5],
-        "qr_code": row[6],
-        "download_count": random.randint(1, 10)  # Example data
-    }
-    # regenerate CAPTCHA for next search
-    session["captcha_num1"] = random.randint(1, 5)
-    session["captcha_num2"] = random.randint(1, 5)
-    return render_template("id_card.html", student=student)
-
+        if row:
+            student = {
+                "id": row[0],
+                "name": row[1],
+                "ieee_id": row[2],
+                "domain": row[3],
+                "joining_date": row[4],
+                "category": row[5],
+                "qr_code": row[6],
+                "download_count": random.randint(1, 10)
+            }
+            session["captcha_num1"] = random.randint(1, 5)
+            session["captcha_num2"] = random.randint(1, 5)
+            return render_template("id_card.html", student=student)
         else:
             flash("⚠️ No student record found.", "warning")
-            # regenerate CAPTCHA
             session["captcha_num1"] = random.randint(1, 5)
             session["captcha_num2"] = random.randint(1, 5)
 
-    # GET or failed POST
     return render_template(
         "search.html",
         all_student_names=all_names,
@@ -344,11 +338,9 @@ if row:
         student=None
     )
 
-
-
+# ---------------- ADMIN AJAX STATS ----------------
 @app.route("/admin/get_stats")
 def get_stats():
-    """Return JSON stats for AJAX calls in dashboard"""
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
 
@@ -376,9 +368,8 @@ def get_stats():
         **society_counts
     }
     return jsonify(stats)
+
 @app.route("/admin/get_attendance_reports")
 def get_attendance_reports():
-    """Return list of attendance report files for dashboard AJAX"""
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
     return jsonify({"attendance_files": attendance_files})
-    
