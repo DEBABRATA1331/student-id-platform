@@ -450,7 +450,7 @@ def mark_attendance(event_date):
     if not student_id or not status:
         return jsonify({"error": "Missing data"}), 400
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
     # Insert or update attendance
