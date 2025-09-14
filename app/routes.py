@@ -252,3 +252,63 @@ def attendance_refresh(event_date):
         "summary": {"total": total or 0, "present": present or 0, "absent": absent or 0},
         "table_html": table_html
     })
+@app.route("/search", methods=["GET", "POST"])
+def search():
+    # Fetch all student names for autocomplete
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT name FROM students ORDER BY name")
+    all_names = [row[0] for row in c.fetchall()]
+    conn.close()
+
+    # Simple CAPTCHA (e.g., 2 + 3)
+    num1, num2 = random.randint(1, 5), random.randint(1, 5)
+
+    student = None
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        ieee_id = request.form.get("ieee_id", "").strip()
+        captcha_answer = request.form.get("captcha_answer", "").strip()
+
+        # Validate CAPTCHA
+        if not captcha_answer.isdigit() or int(captcha_answer) != (num1 + num2):
+            flash("❌ Incorrect CAPTCHA. Please try again.", "danger")
+            return render_template(
+                "search.html",
+                all_student_names=all_names,
+                num1=num1, num2=num2,
+                student=None
+            )
+
+        # Search query
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        if ieee_id:
+            c.execute("SELECT name, ieee_id FROM students WHERE ieee_id = ?", (ieee_id,))
+        else:
+            c.execute("SELECT name, ieee_id FROM students WHERE name LIKE ?", (f"%{name}%",))
+        row = c.fetchone()
+        conn.close()
+
+        if row:
+            # Dummy history for demo — replace with your tracking logic
+            student = {
+                "name": row[0],
+                "ieee_id": row[1],
+                "history": {
+                    "total_downloads": random.randint(1, 10),
+                    "last_login": "2025-09-10",
+                    "recent_searches": "AI, ML, Robotics"
+                }
+            }
+        else:
+            flash("⚠️ No student record found.", "warning")
+
+    return render_template(
+        "search.html",
+        all_student_names=all_names,
+        num1=num1, num2=num2,
+        student=student
+    )
+
