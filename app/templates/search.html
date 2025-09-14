@@ -25,14 +25,8 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
             animation: fadeInUp 1s ease-in-out;
         }
-        h2 {
-            text-align: center;
-            color: #ff5e62;
-            font-weight: bold;
-        }
-        .form-control {
-            border-radius: 8px;
-        }
+        h2 { text-align: center; color: #ff5e62; font-weight: bold; }
+        .form-control { border-radius: 8px; }
         .btn-primary {
             background: #ff5e62;
             border: none;
@@ -40,22 +34,15 @@
             font-weight: bold;
             transition: 0.3s ease;
         }
-        .btn-primary:hover {
-            background: #e34a4f;
-        }
+        .btn-primary:hover { background: #e34a4f; }
         .btn-secondary {
             border-radius: 8px;
             background: #6c757d;
             border: none;
             transition: 0.3s ease;
         }
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-        .captcha-icons {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
+        .btn-secondary:hover { background: #5a6268; }
+        .captcha-icons { font-size: 24px; margin-bottom: 8px; }
         .history-card {
             margin-top: 20px;
             background: #f9f9f9;
@@ -102,17 +89,19 @@
         <!-- Visual CAPTCHA -->
         <div class="mb-3">
             <label class="form-label"><strong>Solve:</strong></label>
-            <div class="captcha-icons">
+            <div class="captcha-icons" id="captcha-display">
                 {% for i in range(num1) %}🔵{% endfor %}
                 +
                 {% for i in range(num2) %}🔴{% endfor %}
                 =
             </div>
             <input type="number" name="captcha_answer" class="form-control" placeholder="Enter the answer" required>
+            <input type="hidden" id="num1" value="{{ num1 }}">
+            <input type="hidden" id="num2" value="{{ num2 }}">
         </div>
 
         <button type="submit" class="btn btn-primary w-100 mt-2">🔎 Search</button>
-        <a href="/" class="btn btn-secondary w-100 mt-2">⬅ Back to Home</a>
+        <button type="button" class="btn btn-secondary w-100 mt-2" onclick="location.href='/'">⬅ Back to Home</button>
     </form>
 
     <!-- Optional: Student history display -->
@@ -127,5 +116,24 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Optional: JS to refresh CAPTCHA without page reload -->
+<script>
+function refreshCaptcha() {
+    const num1 = Math.floor(Math.random() * 5) + 1;
+    const num2 = Math.floor(Math.random() * 5) + 1;
+    let display = '';
+    for (let i = 0; i < num1; i++) display += '🔵';
+    display += ' + ';
+    for (let i = 0; i < num2; i++) display += '🔴';
+    display += ' = ';
+    document.getElementById('captcha-display').innerText = display;
+    document.getElementById('num1').value = num1;
+    document.getElementById('num2').value = num2;
+}
+
+// Refresh CAPTCHA every 30 seconds (optional)
+setInterval(refreshCaptcha, 30000);
+</script>
 </body>
 </html>

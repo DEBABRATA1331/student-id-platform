@@ -272,9 +272,6 @@ def search():
     all_names = [row[0] for row in c.fetchall()]
     conn.close()
 
-    # Simple CAPTCHA (e.g., 2 + 3)
-    num1, num2 = random.randint(1, 5), random.randint(1, 5)
-
     student = None
 
     if request.method == "POST":
@@ -282,9 +279,18 @@ def search():
         ieee_id = request.form.get("ieee_id", "").strip()
         captcha_answer = request.form.get("captcha_answer", "").strip()
 
+        # Read CAPTCHA numbers from hidden inputs
+        try:
+            num1 = int(request.form.get("num1", 0))
+            num2 = int(request.form.get("num2", 0))
+        except ValueError:
+            num1, num2 = 0, 0
+
         # Validate CAPTCHA
         if not captcha_answer.isdigit() or int(captcha_answer) != (num1 + num2):
             flash("❌ Incorrect CAPTCHA. Please try again.", "danger")
+            # Generate new random numbers for next attempt
+            num1, num2 = random.randint(1, 5), random.randint(1, 5)
             return render_template(
                 "search.html",
                 all_student_names=all_names,
@@ -314,6 +320,12 @@ def search():
             }
         else:
             flash("⚠️ No student record found.", "warning")
+            # Generate new CAPTCHA for next attempt
+            num1, num2 = random.randint(1, 5), random.randint(1, 5)
+
+    else:
+        # For GET requests, generate initial CAPTCHA numbers
+        num1, num2 = random.randint(1, 5), random.randint(1, 5)
 
     return render_template(
         "search.html",
@@ -321,6 +333,7 @@ def search():
         num1=num1, num2=num2,
         student=student
     )
+
 @app.route("/admin/get_stats")
 def get_stats():
     """Return JSON stats for AJAX calls in dashboard"""
