@@ -1,0 +1,23 @@
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in attendance_records %}
+        <tr>
+            <td>{{ record.student_id }}</td>
+            <td>{{ record.name }}</td>
+            <td>{{ record.status }}</td>
+        </tr>
+        {% endfor %}
+        {% if attendance_records|length == 0 %}
+        <tr>
+            <td colspan="3" class="text-center">No attendance marked yet.</td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>

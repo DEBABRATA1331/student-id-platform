@@ -9,9 +9,10 @@
         body {
             background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
             font-family: 'Segoe UI', sans-serif;
+            color: #333;
         }
         .dashboard-container {
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 30px auto;
         }
         .dashboard-card {
@@ -20,7 +21,6 @@
             padding: 30px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
             animation: fadeInUp 1s ease-in-out;
-            text-align: center;
             margin-bottom: 20px;
         }
         .org-logo {
@@ -40,22 +40,23 @@
             padding: 15px;
             text-align: center;
             margin: 10px 0;
+            transition: transform 0.3s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px) scale(1.02);
         }
         .stats-card h4 {
             color: #185a9d;
             font-weight: bold;
         }
-        .btn-primary, .btn-success, .btn-secondary {
+        .btn {
             border-radius: 8px;
             font-weight: bold;
-            transition: 0.3s ease;
+            transition: transform 0.2s ease;
         }
-        .btn-primary { background: #185a9d; border: none; }
-        .btn-primary:hover { background: #0f3d6f; }
-        .btn-success { background: #28a745; border: none; }
-        .btn-success:hover { background: #218838; }
-        .btn-secondary { background: #6c757d; border: none; }
-        .btn-secondary:hover { background: #5a6268; }
+        .btn:hover {
+            transform: scale(1.05);
+        }
         table { margin-top: 15px; }
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
@@ -85,7 +86,7 @@
         {% endwith %}
 
         <!-- CSV Upload Form -->
-        <form method="POST" enctype="multipart/form-data" class="animate__animated animate__fadeInUp">
+        <form id="csvUploadForm" method="POST" enctype="multipart/form-data" class="animate__animated animate__fadeInUp">
             <div class="mb-3">
                 <label class="form-label"><strong>Upload Student CSV:</strong></label>
                 <input type="file" name="csv_file" accept=".csv" class="form-control" required>
@@ -100,21 +101,21 @@
         <div class="row">
             <div class="col-md-4 stats-card">
                 <h4>Total Students</h4>
-                <p>{{ stats.total_students }}</p>
+                <p id="total_students">{{ stats.total_students }}</p>
             </div>
             <div class="col-md-4 stats-card">
                 <h4>Total ID Cards Generated</h4>
-                <p>{{ stats.total_id_cards }}</p>
+                <p id="total_id_cards">{{ stats.total_id_cards }}</p>
             </div>
             <div class="col-md-4 stats-card">
                 <h4>Tech / Non-Tech</h4>
-                <p>Tech: {{ stats.tech }} | Non-Tech: {{ stats.non_tech }}</p>
+                <p id="tech_nontech">Tech: {{ stats.tech }} | Non-Tech: {{ stats.non_tech }}</p>
             </div>
         </div>
         <div class="row mt-2">
             <div class="col-md-12 stats-card">
                 <h4>Students per Society</h4>
-                <p>CASS: {{ stats.cass }}, COMSOC: {{ stats.comsoc }}, WIE: {{ stats.wie }}, Sensor: {{ stats.sensor }}, CS: {{ stats.cs }}</p>
+                <p id="society_stats">CASS: {{ stats.cass }}, COMSOC: {{ stats.comsoc }}, WIE: {{ stats.wie }}, Sensor: {{ stats.sensor }}, CS: {{ stats.cs }}</p>
             </div>
         </div>
     </div>
@@ -131,7 +132,7 @@
                     <th>Uploaded By</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="recent_uploads_body">
                 {% for file in recent_uploads %}
                 <tr>
                     <td>{{ file.filename }}</td>
@@ -166,7 +167,7 @@
                     <th>Download</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="attendance_reports_body">
                 {% for file in attendance_files %}
                 <tr>
                     <td>{{ file }}</td>
@@ -216,5 +217,64 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Scripts -->
+<script>
+    // Auto-refresh statistics
+    function fetchStats() {
+        fetch("{{ url_for('get_stats') }}")
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("total_students").innerText = data.total_students;
+                document.getElementById("total_id_cards").innerText = data.total_id_cards;
+                document.getElementById("tech_nontech").innerText = `Tech: ${data.tech} | Non-Tech: ${data.non_tech}`;
+                document.getElementById("society_stats").innerText =
+                    `CASS: ${data.cass}, COMSOC: ${data.comsoc}, WIE: ${data.wie}, Sensor: ${data.sensor}, CS: ${data.cs}`;
+            });
+    }
+    setInterval(fetchStats, 30000);
+
+    // Auto-refresh attendance reports
+    function fetchAttendanceReports() {
+        fetch("{{ url_for('get_attendance_reports') }}")
+            .then(res => res.json())
+            .then(data => {
+                let tbody = document.getElementById("attendance_reports_body");
+                tbody.innerHTML = "";
+                data.files.forEach(file => {
+                    tbody.innerHTML += `
+                        <tr class="animate__animated animate__fadeIn">
+                            <td>${file}</td>
+                            <td><a href="/static/attendance_reports/${file}" class="btn btn-success btn-sm" download>Download</a></td>
+                        </tr>`;
+                });
+            });
+    }
+    setInterval(fetchAttendanceReports, 45000);
+
+    // CSV Upload via AJAX
+    document.getElementById("csvUploadForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        let formData = new FormData(this);
+
+        fetch("{{ url_for('admin_dashboard') }}", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            let tbody = document.getElementById("recent_uploads_body");
+            tbody.innerHTML = "";
+            data.recent_uploads.forEach(file => {
+                tbody.innerHTML += `
+                <tr class="animate__animated animate__fadeIn">
+                    <td>${file.filename}</td>
+                    <td>${file.uploaded_on}</td>
+                    <td>${file.uploaded_by}</td>
+                </tr>`;
+            });
+        });
+    });
+</script>
 </body>
 </html>
