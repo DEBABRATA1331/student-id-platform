@@ -303,32 +303,32 @@ def search():
                 student=None
             )
 
-        # Search student
-        conn = sqlite3.connect(DATABASE)
-        c = conn.cursor()
-        if ieee_id:
-            c.execute("SELECT id, name, ieee_id, domain, joining_date, category, qr_code FROM students WHERE ieee_id = ?", (ieee_id,))
-        else:
-            c.execute("SELECT id, name, ieee_id, domain, joining_date, category, qr_code FROM students WHERE name LIKE ?", (f"%{name}%",))
-        row = c.fetchone()
-        conn.close()
+# Search student
+conn = sqlite3.connect(DATABASE)
+c = conn.cursor()
+if ieee_id:
+    c.execute("SELECT id, name, ieee_id, Domain, [Joining Date], Category, QR FROM students WHERE ieee_id = ?", (ieee_id,))
+else:
+    c.execute("SELECT id, name, ieee_id, Domain, [Joining Date], Category, QR FROM students WHERE name LIKE ?", (f"%{name}%",))
+row = c.fetchone()
+conn.close()
 
-        if row:
-            student = {
-                "id": row[0],
-                "name": row[1],
-                "ieee_id": row[2],
-                "domain": row[3],
-                "domain_type": row[4],
-                "joining_date": row[5],
-                "category": row[6],
-                "qr_code": row[7],
-                "download_count": random.randint(1, 10)  # Example data
-            }
-            # regenerate CAPTCHA for next search
-            session["captcha_num1"] = random.randint(1, 5)
-            session["captcha_num2"] = random.randint(1, 5)
-            return render_template("id_card.html", student=student)
+if row:
+    student = {
+        "id": row[0],
+        "name": row[1],
+        "ieee_id": row[2],
+        "domain": row[3],
+        "joining_date": row[4],
+        "category": row[5],
+        "qr_code": row[6],
+        "download_count": random.randint(1, 10)  # Example data
+    }
+    # regenerate CAPTCHA for next search
+    session["captcha_num1"] = random.randint(1, 5)
+    session["captcha_num2"] = random.randint(1, 5)
+    return render_template("id_card.html", student=student)
+
         else:
             flash("⚠️ No student record found.", "warning")
             # regenerate CAPTCHA
