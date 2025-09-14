@@ -373,3 +373,24 @@ def get_stats():
 def get_attendance_reports():
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
     return jsonify({"attendance_files": attendance_files})
+@app.route("/download/<int:student_id>")
+def user_download(student_id):
+    conn = sqlite3.connect("instance/students.db")
+    c = conn.cursor()
+    c.execute("SELECT * FROM students WHERE id = ?", (student_id,))
+    student = c.fetchone()
+    conn.close()
+
+    if not student:
+        flash("Student not found", "danger")
+        return redirect(url_for("search"))
+
+    # Generate PDF
+    pdf_bytes = generate_idcard_pdf(student)
+    
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        as_attachment=True,
+        download_name=f"idcard_{student[1]}.pdf",
+        mimetype="application/pdf"
+    )
