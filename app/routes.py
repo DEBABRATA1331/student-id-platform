@@ -395,7 +395,7 @@ def user_download(student_id):
         mimetype="application/pdf"
     )
 @app.route("/attendance/")
-def attendance():
+def attendance_page():
     event_date = request.args.get("event_date")
 
     if not event_date:
