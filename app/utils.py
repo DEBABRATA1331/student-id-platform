@@ -7,11 +7,13 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 
 # ---------------- QR Code Generator ----------------
-def generate_qr_code(data: str):
+def generate_qr_code(name: str, ieee_id: str):
     """
-    Generate a QR code image (PNG) in memory.
+    Generate a QR code image (PNG) in memory using name and IEEE ID.
     Returns a BytesIO object.
     """
+    data = f"Name: {name}, IEEE ID: {ieee_id}"
+
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -30,7 +32,7 @@ def generate_qr_code(data: str):
 
 
 # ---------------- ID Card PDF Generator ----------------
-def generate_idcard_pdf(name: str, ieee_id: str, qr_data: str, output_path: str = None):
+def generate_idcard_pdf(name: str, ieee_id: str, output_path: str = None):
     """
     Generate a simple ID card PDF with name, ieee_id, and QR code.
     """
@@ -51,7 +53,7 @@ def generate_idcard_pdf(name: str, ieee_id: str, qr_data: str, output_path: str 
     c.drawString(100, height - 170, f"IEEE ID: {ieee_id}")
 
     # QR Code
-    qr_buf = generate_qr_code(qr_data)
+    qr_buf = generate_qr_code(name, ieee_id)
     qr_path = f"qr_{ieee_id}.png"
     with open(qr_path, "wb") as f:
         f.write(qr_buf.read())
