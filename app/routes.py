@@ -45,8 +45,8 @@ def home():
     ]
 
     announcements = [
-        {"title": "Workshop on Robotics", "date": "2025-08-15", "description": "Join us for a hands-on robotics workshop."},
-        {"title": "IEEE Day Celebration", "date": "2025-10-02", "description": "Mark your calendars for IEEE Day 2025 events."}
+        {"title": "Workshop on Robotics", "date": "2025-10-11", "description": "Join us for a hands-on robotics workshop."},
+        {"title": "IEEE Day Celebration", "date": "2025-10-17", "description": "Mark your calendars for IEEE Day 2025 events."}
     ]
 
     # Check for active attendance session
@@ -90,21 +90,34 @@ def admin_dashboard():
             file.save(filepath)
 
             df = pd.read_csv(filepath)
+
+            # Clean headers: strip spaces + lowercase
+            df.columns = df.columns.str.strip().str.lower()
+
             students = []
             for _, row in df.iterrows():
-                qr_file = generate_qr_code(row["Name"], row["IEEE ID"])
+                qr_file = generate_qr_code(row["name"], row["ieee_id"])
                 students.append({
-                    "Name": row["Name"],
-                    "Domain": row["Domain"],
-                    "Joining Date": row["Joining Date"],
-                    "Category": row["Category"],
-                    "IEEE ID": row["IEEE ID"],
+                    "Name": row["name"],
+                    "Domain": row.get("domain", ""),         # safe if missing
+                    "Joining Date": row.get("joining_date", ""),
+                    "Category": row.get("category", ""),
+                    "IEEE ID": row["ieee_id"],
                     "QR": qr_file
                 })
+
             clear_and_insert_students(students)
             flash("CSV uploaded and QR codes generated successfully!", "success")
         else:
             flash("Please upload a valid CSV file.", "danger")
+
+    # ---------------- Fetch students for dashboard ----------------
+    conn = sqlite3.connect(DATABASE)
+    df = pd.read_sql_query("SELECT * FROM students", conn)
+    conn.close()
+
+    return render_template("admin_dashboard.html", tables=[df.to_html(classes="table table-striped", index=False)])
+
 
     # ---------------- Attendance Files ----------------
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
