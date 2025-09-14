@@ -265,6 +265,10 @@ def attendance_refresh(event_date):
 # ---------------- SEARCH ----------------
 @app.route("/search", methods=["GET", "POST"])
 def search():
+    import random
+    import sqlite3
+    from flask import render_template, request, flash, redirect, url_for
+
     # Fetch all student names for autocomplete
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
@@ -272,19 +276,13 @@ def search():
     all_names = [row[0] for row in c.fetchall()]
     conn.close()
 
-    student = None
+    # Generate CAPTCHA numbers
+    num1, num2 = random.randint(1, 5), random.randint(1, 5)
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         ieee_id = request.form.get("ieee_id", "").strip()
         captcha_answer = request.form.get("captcha_answer", "").strip()
-
-        # Read CAPTCHA numbers from hidden inputs
-        try:
-            num1 = int(request.form.get("num1", 0))
-            num2 = int(request.form.get("num2", 0))
-        except ValueError:
-            num1, num2 = 0, 0
 
         # Validate CAPTCHA
         if not captcha_answer.isdigit() or int(captcha_answer) != (num1 + num2):
@@ -292,8 +290,8 @@ def search():
             return render_template(
                 "search.html",
                 all_student_names=all_names,
-                num1=random.randint(1, 5),
-                num2=random.randint(1, 5),
+                num1=num1,
+                num2=num2,
                 student=None
             )
 
@@ -301,35 +299,38 @@ def search():
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
         if ieee_id:
-            c.execute("SELECT name, ieee_id FROM students WHERE ieee_id = ?", (ieee_id,))
+            c.execute("SELECT id, name, ieee_id, domain, domain_type, joining_date, category, qr_code FROM students WHERE ieee_id = ?", (ieee_id,))
         else:
-            c.execute("SELECT name, ieee_id FROM students WHERE name LIKE ?", (f"%{name}%",))
+            c.execute("SELECT id, name, ieee_id, domain, domain_type, joining_date, category, qr_code FROM students WHERE name LIKE ?", (f"%{name}%",))
         row = c.fetchone()
         conn.close()
 
         if row:
             student = {
-                "name": row[0],
-                "ieee_id": row[1],
-                "history": {
-                    "total_downloads": random.randint(1, 10),
-                    "last_login": "2025-09-10",
-                    "recent_searches": "AI, ML, Robotics"
-                }
+                "id": row[0],
+                "name": row[1],
+                "ieee_id": row[2],
+                "domain": row[3],
+                "domain_type": row[4],
+                "joining_date": row[5],
+                "category": row[6],
+                "qr_code": row[7],
+                "download_count": random.randint(1, 10)  # example data
             }
+            # Render the ID card page directly
+            return render_template("id_card.html", student=student)
         else:
             flash("⚠️ No student record found.", "warning")
 
-    else:
-        # For GET requests, generate initial CAPTCHA numbers
-        num1, num2 = random.randint(1, 5), random.randint(1, 5)
-
+    # For GET or failed POST
     return render_template(
         "search.html",
         all_student_names=all_names,
-        num1=num1, num2=num2,
-        student=student
+        num1=num1,
+        num2=num2,
+        student=None
     )
+
 
 
 @app.route("/admin/get_stats")
