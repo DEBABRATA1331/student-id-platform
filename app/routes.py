@@ -307,9 +307,9 @@ def search():
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
         if ieee_id:
-            c.execute("SELECT id, name, ieee_id, domain, domain_type, joining_date, category, qr_code FROM students WHERE ieee_id = ?", (ieee_id,))
+            c.execute("SELECT id, name, ieee_id, domain, joining_date, category, qr_code FROM students WHERE ieee_id = ?", (ieee_id,))
         else:
-            c.execute("SELECT id, name, ieee_id, domain, domain_type, joining_date, category, qr_code FROM students WHERE name LIKE ?", (f"%{name}%",))
+            c.execute("SELECT id, name, ieee_id, domain, joining_date, category, qr_code FROM students WHERE name LIKE ?", (f"%{name}%",))
         row = c.fetchone()
         conn.close()
 
