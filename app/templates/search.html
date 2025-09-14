@@ -1,60 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Search</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Segoe UI', sans-serif;
-            padding: 15px;
-        }
-        .search-card {
-            max-width: 550px;
-            width: 100%;
-            background: #ffffff;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-            animation: fadeInUp 1s ease-in-out;
-        }
-        h2 { text-align: center; color: #ff5e62; font-weight: bold; }
-        .form-control { border-radius: 8px; }
-        .btn-primary {
-            background: #ff5e62;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            transition: 0.3s ease;
-        }
-        .btn-primary:hover { background: #e34a4f; }
-        .btn-secondary {
-            border-radius: 8px;
-            background: #6c757d;
-            border: none;
-            transition: 0.3s ease;
-        }
-        .btn-secondary:hover { background: #5a6268; }
-        .captcha-icons { font-size: 24px; margin-bottom: 8px; }
-        .history-card {
-            margin-top: 20px;
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Search</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<style>
+    body {
+        background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Segoe UI', sans-serif;
+        padding: 15px;
+    }
+    .search-card {
+        max-width: 550px;
+        width: 100%;
+        background: #ffffff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        animation: fadeInUp 1s ease-in-out;
+    }
+    h2 { text-align: center; color: #ff5e62; font-weight: bold; }
+    .form-control { border-radius: 8px; }
+    .btn-primary {
+        background: #ff5e62;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.3s ease;
+    }
+    .btn-primary:hover { background: #e34a4f; }
+    .btn-secondary {
+        border-radius: 8px;
+        background: #6c757d;
+        border: none;
+        transition: 0.3s ease;
+    }
+    .btn-secondary:hover { background: #5a6268; }
+    .history-card {
+        margin-top: 20px;
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 </head>
 <body>
 <div class="search-card animate__animated animate__fadeInUp">
@@ -69,9 +68,9 @@
     {% endwith %}
 
     <form method="POST" class="animate__animated animate__fadeIn">
-        <!-- Name with autocomplete -->
+        <!-- Name -->
         <div class="mb-3">
-            <label for="name" class="form-label"><strong>Enter Your Name:</strong></label>
+            <label class="form-label"><strong>Enter Your Name:</strong></label>
             <input type="text" name="name" list="name-suggestions" class="form-control" placeholder="Type your full name">
             <datalist id="name-suggestions">
                 {% for n in all_student_names %}
@@ -80,60 +79,22 @@
             </datalist>
         </div>
 
-        <!-- IEEE ID search -->
+        <!-- IEEE ID -->
         <div class="mb-3">
-            <label for="ieee_id" class="form-label"><strong>Or enter IEEE ID:</strong></label>
+            <label class="form-label"><strong>Or enter IEEE ID:</strong></label>
             <input type="text" name="ieee_id" class="form-control" placeholder="Type your IEEE ID">
         </div>
 
-        <!-- Visual CAPTCHA -->
+        <!-- Minimal CAPTCHA -->
         <div class="mb-3">
             <label class="form-label"><strong>Solve:</strong></label>
-            <div class="captcha-icons" id="captcha-display">
-                {% for i in range(num1) %}🔵{% endfor %}
-                +
-                {% for i in range(num2) %}🔴{% endfor %}
-                =
-            </div>
+            <div id="captcha-display" class="mb-2">{{ num1 }} + {{ num2 }} = </div>
             <input type="number" name="captcha_answer" class="form-control" placeholder="Enter the answer" required>
-            <input type="hidden" name="num1" value="{{ num1 }}">
-            <input type="hidden" name="num2" value="{{ num2 }}">
         </div>
 
         <button type="submit" class="btn btn-primary w-100 mt-2">🔎 Search</button>
         <button type="button" class="btn btn-secondary w-100 mt-2" onclick="location.href='/'">⬅ Back to Home</button>
     </form>
-
-    <!-- Optional: Student history display -->
-    {% if student %}
-    <div class="history-card animate__animated animate__fadeIn">
-        <h5>Student Activity History</h5>
-        <p><b>Name:</b> {{ student.name }}</p>
-        <p><b>IEEE ID:</b> {{ student.ieee_id }}</p>
-        <p><b>Total ID Downloads:</b> {{ student.history.total_downloads }}</p>
-        <p><b>Last Login:</b> {{ student.history.last_login }}</p>
-        <p><b>Recent Searches:</b> {{ student.history.recent_searches }}</p>
-    </div>
-    {% endif %}
 </div>
-
-<!-- Optional: JS to refresh CAPTCHA without page reload -->
-<script>
-function refreshCaptcha() {
-    const num1 = Math.floor(Math.random() * 5) + 1;
-    const num2 = Math.floor(Math.random() * 5) + 1;
-    let display = '';
-    for (let i = 0; i < num1; i++) display += '🔵';
-    display += ' + ';
-    for (let i = 0; i < num2; i++) display += '🔴';
-    display += ' = ';
-    document.getElementById('captcha-display').innerText = display;
-    document.querySelector('input[name="num1"]').value = num1;
-    document.querySelector('input[name="num2"]').value = num2;
-}
-
-// Refresh CAPTCHA every 30 seconds (optional)
-setInterval(refreshCaptcha, 30000);
-</script>
 </body>
 </html>

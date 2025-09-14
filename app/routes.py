@@ -267,7 +267,7 @@ def attendance_refresh(event_date):
 def search():
     import random
     import sqlite3
-    from flask import render_template, request, flash, redirect, url_for
+    from flask import render_template, request, flash, session
 
     # Fetch all student names for autocomplete
     conn = sqlite3.connect(DATABASE)
@@ -276,8 +276,13 @@ def search():
     all_names = [row[0] for row in c.fetchall()]
     conn.close()
 
-    # Generate CAPTCHA numbers
-    num1, num2 = random.randint(1, 5), random.randint(1, 5)
+    # Generate CAPTCHA numbers and store in session for POST validation
+    if "captcha_num1" not in session or "captcha_num2" not in session:
+        session["captcha_num1"] = random.randint(1, 5)
+        session["captcha_num2"] = random.randint(1, 5)
+
+    num1 = session["captcha_num1"]
+    num2 = session["captcha_num2"]
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -287,15 +292,18 @@ def search():
         # Validate CAPTCHA
         if not captcha_answer.isdigit() or int(captcha_answer) != (num1 + num2):
             flash("❌ Incorrect CAPTCHA. Please try again.", "danger")
+            # regenerate CAPTCHA
+            session["captcha_num1"] = random.randint(1, 5)
+            session["captcha_num2"] = random.randint(1, 5)
             return render_template(
                 "search.html",
                 all_student_names=all_names,
-                num1=num1,
-                num2=num2,
+                num1=session["captcha_num1"],
+                num2=session["captcha_num2"],
                 student=None
             )
 
-        # Search query
+        # Search student
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
         if ieee_id:
@@ -315,14 +323,19 @@ def search():
                 "joining_date": row[5],
                 "category": row[6],
                 "qr_code": row[7],
-                "download_count": random.randint(1, 10)  # example data
+                "download_count": random.randint(1, 10)  # Example data
             }
-            # Render the ID card page directly
+            # regenerate CAPTCHA for next search
+            session["captcha_num1"] = random.randint(1, 5)
+            session["captcha_num2"] = random.randint(1, 5)
             return render_template("id_card.html", student=student)
         else:
             flash("⚠️ No student record found.", "warning")
+            # regenerate CAPTCHA
+            session["captcha_num1"] = random.randint(1, 5)
+            session["captcha_num2"] = random.randint(1, 5)
 
-    # For GET or failed POST
+    # GET or failed POST
     return render_template(
         "search.html",
         all_student_names=all_names,

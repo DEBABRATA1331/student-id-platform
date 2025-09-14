@@ -92,6 +92,14 @@
                 <input type="file" name="csv_file" accept=".csv" class="form-control" required>
             </div>
             <button type="submit" class="btn btn-primary w-100">⬆ Upload & Generate QR</button>
+
+            <!-- Progress Bar -->
+            <div class="progress mt-2" style="height: 25px; display: none;" id="uploadProgress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                     style="width: 0%" id="uploadBar">0%</div>
+            </div>
+            <!-- Upload Status -->
+            <div class="mt-2" id="uploadStatus"></div>
         </form>
     </div>
 
@@ -150,14 +158,11 @@
     <!-- Attendance Section -->
     <div class="dashboard-card animate__animated animate__fadeInUp">
         <h3>📝 Attendance Management</h3>
-
-        <!-- Start New Attendance -->
         <form method="GET" action="{{url_for('attendance', event_date=request.args.get('event_date', '') ) }}" class="mb-3 d-flex gap-2">
             <input type="date" name="event_date" class="form-control" required>
             <button type="submit" class="btn btn-primary">Start Attendance (3 mins)</button>
         </form>
 
-        <!-- Existing Attendance Reports -->
         {% if attendance_files %}
         <h5>Previous Attendance Reports</h5>
         <table class="table table-bordered table-striped">
@@ -252,29 +257,25 @@
     }
     setInterval(fetchAttendanceReports, 45000);
 
-    // CSV Upload via AJAX
+    // CSV Upload with progress and status
     document.getElementById("csvUploadForm").addEventListener("submit", function(e) {
         e.preventDefault();
         let formData = new FormData(this);
 
-        fetch("{{ url_for('admin_dashboard') }}", {
-            method: "POST",
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            let tbody = document.getElementById("recent_uploads_body");
-            tbody.innerHTML = "";
-            data.recent_uploads.forEach(file => {
-                tbody.innerHTML += `
-                <tr class="animate__animated animate__fadeIn">
-                    <td>${file.filename}</td>
-                    <td>${file.uploaded_on}</td>
-                    <td>${file.uploaded_by}</td>
-                </tr>`;
-            });
-        });
-    });
-</script>
-</body>
-</html>
+        let progressContainer = document.getElementById("uploadProgress");
+        let progressBar = document.getElementById("uploadBar");
+        let status = document.getElementById("uploadStatus");
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        progressBar.classList.remove("bg-success", "bg-danger");
+        progressBar.classList.add("bg-info");
+        progressBar.innerText = "0%";
+        status.innerText = "";
+
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", "{{ url_for('admin_dashboard') }}", true);
+
+        xhr.upload.addEventListener("progress", function(e) {
+            if (e.lengthComputable) {
+                let percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent +
