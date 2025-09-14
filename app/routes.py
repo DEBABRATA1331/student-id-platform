@@ -170,6 +170,15 @@ def admin_dashboard():
         **society_counts
     }
 
+    # -------- AJAX live refresh support --------
+    if request.args.get("ajax") == "1":
+        uploads_html = render_template("_uploads.html", recent_uploads=recent_uploads)
+        attendance_html = render_template("_attendance_files.html", attendance_files=attendance_files)
+        return jsonify({
+            "uploads_html": uploads_html,
+            "attendance_html": attendance_html
+        })
+
     return render_template(
         "dashboard.html",
         attendance_files=attendance_files,
@@ -252,6 +261,8 @@ def attendance_refresh(event_date):
         "summary": {"total": total or 0, "present": present or 0, "absent": absent or 0},
         "table_html": table_html
     })
+
+# ---------------- SEARCH ----------------
 @app.route("/search", methods=["GET", "POST"])
 def search():
     # Fetch all student names for autocomplete
@@ -292,7 +303,6 @@ def search():
         conn.close()
 
         if row:
-            # Dummy history for demo — replace with your tracking logic
             student = {
                 "name": row[0],
                 "ieee_id": row[1],
@@ -311,4 +321,3 @@ def search():
         num1=num1, num2=num2,
         student=student
     )
-

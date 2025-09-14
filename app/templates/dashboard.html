@@ -152,7 +152,7 @@
         <h3>📝 Attendance Management</h3>
 
         <!-- Start New Attendance -->
-        <form method="GET" action="{{ url_for('admin_start_attendance') }}" class="mb-3 d-flex gap-2">
+        <form method="GET" action="{{ url_for('attendance') }}" class="mb-3 d-flex gap-2">
             <input type="date" name="event_date" class="form-control" required>
             <button type="submit" class="btn btn-primary">Start Attendance (3 mins)</button>
         </form>
