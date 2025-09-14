@@ -402,7 +402,11 @@ def attendance_page():
     if not event_date:
         return "❌ Please provide ?event_date=YYYY-MM-DD", 400
 
-    conn = sqlite3.connect(DATABASE)  # ✅ FIXED here
+    # get active session info (from in-memory dict)
+    active_session = active_attendance.get(event_date)  # may be None
+    now = datetime.datetime.now()
+
+    conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
     # Fetch all students
@@ -420,19 +424,20 @@ def attendance_page():
 
     # Attendance summary
     cursor.execute("""
-        SELECT COUNT(*), 
-               SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END), 
-               SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) 
+        SELECT COUNT(*),
+               SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END)
         FROM attendance WHERE event_date = ?
     """, (event_date,))
-    total, present, absent = cursor.fetchone() or (0, 0, 0)
+    row = cursor.fetchone() or (0, 0, 0)
+    total, present, absent = row
 
     conn.close()
 
     attendance_summary = {
-        "total": total,
-        "present": present,
-        "absent": absent,
+        "total": total or 0,
+        "present": present or 0,
+        "absent": absent or 0,
     }
 
     return render_template(
@@ -440,8 +445,11 @@ def attendance_page():
         students=students,
         event_date=event_date,
         attendance_records=attendance_records,
-        attendance_summary=attendance_summary
+        attendance_summary=attendance_summary,
+        active_session=active_session,   # <-- added
+        now=now                          # <-- added
     )
+
 
 @app.route("/attendance/mark/<event_date>", methods=["POST"])
 def mark_attendance(event_date):
@@ -511,6 +519,7 @@ def student_self_mark(event_date):
     session_info = active_attendance.get(event_date)
     if not session_info or session_info["expires"] < datetime.datetime.now():
         flash("❌ Attendance session expired or not active.", "danger")
+        return redirect(url_for("attendance_page", event_date=event_date))
         return redirect(url_for("home"))
 
     conn = sqlite3.connect(DATABASE)
@@ -556,7 +565,7 @@ def attendance_report(event_date):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT s.name, a.student_id, a.status
+        SELECT s.id, s.name, a.status, a.marked_by
         FROM attendance a
         JOIN students s ON a.student_id = s.id
         WHERE a.event_date = ?
@@ -564,8 +573,13 @@ def attendance_report(event_date):
     records = cursor.fetchall()
     conn.close()
 
-    # Generate PDF using your existing utility
-    pdf_bytes = generate_idcard_pdf(records)  # ⚠️ replace with generate_attendance_pdf
-    return send_file(io.BytesIO(pdf_bytes), as_attachment=True, download_name=f"attendance_{event_date}.pdf")
+    pdf_bytes = generate_attendance_pdf(records, event_date)  # ✅ new function
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"Attendance_{event_date}.pdf"
+    )
+
     
     

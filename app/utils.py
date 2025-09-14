@@ -1,87 +1,107 @@
-import os
-import qrcode
+from flask import render_template, request, redirect, url_for, flash, session, send_file
+from app import app
+import sqlite3, os, datetime
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.utils import ImageReader
-from reportlab.lib.colors import HexColor
 
-# ---------------- QR Code Generation ----------------
-def generate_qr_code(name, ieee_id):
-    qr_data = f"{name} | IEEE ID: {ieee_id}"
-    qr = qrcode.QRCode(box_size=8, border=2)
-    qr.add_data(qr_data)
-    qr.make(fit=True)
+DB = "app/database.db"
 
-    img = qr.make_image(fill_color="black", back_color="white")
-    qr_filename = f"{name.replace(' ', '_')}_qr.png"
-    qr_path = os.path.join("app/static/qrcodes", qr_filename)
-    img.save(qr_path)
+# ---------------- Admin: Start Attendance Session ----------------
+@app.route("/admin/start_attendance", methods=["POST"])
+def start_attendance():
+    start_time = datetime.datetime.now()
+    end_time = start_time + datetime.timedelta(minutes=3)
 
-    return qr_filename
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("DELETE FROM attendance_session")  # allow only 1 active
+    c.execute("INSERT INTO attendance_session (start_time, end_time, active) VALUES (?, ?, ?)",
+              (start_time, end_time, 1))
+    conn.commit()
+    conn.close()
+
+    flash("Attendance session started for 3 minutes!")
+    return redirect(url_for("admin_dashboard"))
 
 
-# ---------------- PDF Generation (Stylish ID Card) ----------------
-def generate_idcard_pdf(student):
-    pdf_filename = f"{student['name'].replace(' ', '_')}_ID_Card.pdf"
-    pdf_path = os.path.join("app/static/qrcodes", pdf_filename)
+# ---------------- Student: Mark Attendance ----------------
+@app.route("/mark_attendance", methods=["POST"])
+def mark_attendance():
+    ieee_id = request.form.get("ieee_id")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    # Check active session
+    c.execute("SELECT start_time, end_time FROM attendance_session WHERE active=1")
+    session_data = c.fetchone()
+    if not session_data:
+        flash("No active attendance session.")
+        return redirect(url_for("student_portal"))
+
+    start_time, end_time = map(datetime.datetime.fromisoformat, session_data)
+    now = datetime.datetime.now()
+    if not (start_time <= now <= end_time):
+        flash("Attendance window closed.")
+        return redirect(url_for("student_portal"))
+
+    # Mark present
+    c.execute("INSERT OR IGNORE INTO attendance (ieee_id, timestamp) VALUES (?, ?)",
+              (ieee_id, now))
+    conn.commit()
+    conn.close()
+
+    flash("Attendance marked successfully!")
+    return redirect(url_for("student_portal"))
+
+
+# ---------------- Admin: Manual Attendance ----------------
+@app.route("/admin/manual_attendance", methods=["POST"])
+def manual_attendance():
+    ieee_id = request.form.get("ieee_id")
+
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO attendance (ieee_id, timestamp) VALUES (?, ?)",
+              (ieee_id, datetime.datetime.now()))
+    conn.commit()
+    conn.close()
+
+    flash(f"Manual attendance marked for {ieee_id}")
+    return redirect(url_for("admin_dashboard"))
+
+
+# ---------------- Generate Attendance Report PDF ----------------
+@app.route("/admin/attendance_report")
+def attendance_report():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT name, ieee_id FROM students")
+    students = c.fetchall()
+
+    c.execute("SELECT ieee_id FROM attendance")
+    present_ids = {row[0] for row in c.fetchall()}
+    conn.close()
+
+    pdf_filename = "attendance_report.pdf"
+    pdf_path = os.path.join("app/static/reports", pdf_filename)
 
     c = canvas.Canvas(pdf_path, pagesize=A4)
     width, height = A4
+    y = height - 50
 
-    # ----------- Card Dimensions -----------
-    card_x = 100
-    card_y = height - 420
-    card_width = 380
-    card_height = 260
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(200, y, "Attendance Report")
+    y -= 40
 
-    # ----------- Shadow -----------
-    c.setFillColor(HexColor("#d9d9d9"))
-    c.roundRect(card_x + 5, card_y - 5, card_width, card_height, 15, fill=True, stroke=0)
+    for name, ieee_id in students:
+        status = "Present" if ieee_id in present_ids else "Absent"
+        c.setFont("Helvetica", 12)
+        c.drawString(50, y, f"{name} ({ieee_id}) - {status}")
+        y -= 20
+        if y < 50:
+            c.showPage()
+            y = height - 50
 
-    # ----------- Card Background -----------
-    c.setFillColor(HexColor("#ffffff"))
-    c.roundRect(card_x, card_y, card_width, card_height, 15, fill=True, stroke=0)
-
-    # ----------- Border -----------
-    c.setStrokeColor(HexColor("#185a9d"))
-    c.setLineWidth(2)
-    c.roundRect(card_x, card_y, card_width, card_height, 15, fill=0, stroke=1)
-
-    # ----------- Header -----------
-    header_height = 45
-    c.setFillColor(HexColor("#5b86e5"))
-    c.roundRect(card_x, card_y + card_height - header_height, card_width, header_height, 15, fill=True, stroke=0)
-    c.setFillColor(HexColor("#ffffff"))
-    c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(card_x + card_width / 2, card_y + card_height - 28, "STUDENT ID CARD")
-
-    # ----------- Organization Logo -----------
-    logo_path = os.path.join("app/static/images", "logo.png")
-    if os.path.exists(logo_path):
-        logo = ImageReader(logo_path)
-        c.drawImage(logo, card_x + 15, card_y + card_height - 80, width=50, height=50, mask='auto')
-
-    # ----------- Organization Name -----------
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(HexColor("#185a9d"))
-    c.drawString(card_x + 75, card_y + card_height - 60, "YOUR ORGANIZATION NAME")
-
-    # ----------- Student Details -----------
-    c.setFillColor(HexColor("#000000"))
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(card_x + 20, card_y + card_height - 100, f"Name: {student['name']}")
-    c.setFont("Helvetica", 11)
-    c.drawString(card_x + 20, card_y + card_height - 120, f"Domain: {student['domain']}")
-    c.drawString(card_x + 20, card_y + card_height - 140, f"Joining Date: {student['joining_date']}")
-    c.drawString(card_x + 20, card_y + card_height - 160, f"Category: {student['category']}")
-    c.drawString(card_x + 20, card_y + card_height - 180, f"IEEE ID: {student['ieee_id']}")
-
-    # ----------- QR Code -----------
-    qr_path = os.path.join("app/static/qrcodes", student["qr_code"])
-    if os.path.exists(qr_path):
-        qr = ImageReader(qr_path)
-        c.drawImage(qr, card_x + card_width - 120, card_y + 40, width=90, height=90)
-
-    c.showPage()
     c.save()
-    return pdf_filename
+    return send_file(pdf_path, as_attachment=True)
