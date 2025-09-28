@@ -313,6 +313,11 @@ def search():
         conn.close()
 
         if row:
+            # FIX APPLIED HERE: Decode qr_code from bytes (row[6]) to string
+            qr_code_value = row[6]
+            if isinstance(qr_code_value, bytes):
+                qr_code_value = qr_code_value.decode('utf-8')
+                
             student = {
                 "id": row[0],
                 "name": row[1],
@@ -320,7 +325,7 @@ def search():
                 "domain": row[3],
                 "joining_date": row[4],
                 "category": row[5],
-                "qr_code": row[6],
+                "qr_code": qr_code_value, # Use the decoded string value
                 "download_count": random.randint(1, 10)
             }
             session["captcha_num1"] = random.randint(1, 5)
