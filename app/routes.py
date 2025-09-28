@@ -1,11 +1,12 @@
-from flask import render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
+from flask import render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify, send_file
 from app import app
 import os
 import pandas as pd
 import random
 import sqlite3
 from app.models import clear_and_insert_students
-from app.utils import generate_qr_code, generate_idcard_pdf
+# NOTE: Assuming generate_qr_code, generate_idcard_pdf, and generate_attendance_pdf exist in app.utils
+from app.utils import generate_qr_code, generate_idcard_pdf 
 import threading
 import io
 import csv
@@ -313,11 +314,18 @@ def search():
         conn.close()
 
         if row:
-            # FIX APPLIED HERE: Decode qr_code from bytes (row[6]) to string
+            # FIX APPLIED HERE: Robustly decode qr_code from bytes (row[6]) to string
             qr_code_value = row[6]
+            
             if isinstance(qr_code_value, bytes):
-                qr_code_value = qr_code_value.decode('utf-8')
-                
+                try:
+                    # Try standard UTF-8 decoding first
+                    qr_code_value = qr_code_value.decode('utf-8')
+                except UnicodeDecodeError:
+                    # If UTF-8 fails (as with the 0x89 byte), fall back to latin-1,
+                    # which can decode all byte values and usually works for file paths.
+                    qr_code_value = qr_code_value.decode('latin-1')
+
             student = {
                 "id": row[0],
                 "name": row[1],
@@ -325,7 +333,7 @@ def search():
                 "domain": row[3],
                 "joining_date": row[4],
                 "category": row[5],
-                "qr_code": qr_code_value, # Use the decoded string value
+                "qr_code": qr_code_value, # Use the robustly decoded string value
                 "download_count": random.randint(1, 10)
             }
             session["captcha_num1"] = random.randint(1, 5)
@@ -379,6 +387,8 @@ def get_stats():
 def get_attendance_reports():
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
     return jsonify({"attendance_files": attendance_files})
+
+# Note: The original request had `from flask import send_file` here, moved to the top.
 @app.route("/download/<int:student_id>")
 def user_download(student_id):
     conn = sqlite3.connect("instance/students.db")
@@ -400,6 +410,7 @@ def user_download(student_id):
         download_name=f"idcard_{student[1]}.pdf",
         mimetype="application/pdf"
     )
+
 @app.route("/attendance/")
 def attendance_page():
     event_date = request.args.get("event_date")
@@ -451,8 +462,8 @@ def attendance_page():
         event_date=event_date,
         attendance_records=attendance_records,
         attendance_summary=attendance_summary,
-        active_session=active_session,   # <-- added
-        now=now                          # <-- added
+        active_session=active_session,  # <-- added
+        now=now                        # <-- added
     )
 
 
@@ -503,6 +514,7 @@ def mark_attendance(event_date):
         "summary": {"total": total, "present": present, "absent": absent},
         "table_html": table_html
     })
+
 @app.route("/attendance/start", methods=["POST"])
 def start_attendance_session():
     event_date = request.form.get("event_date")
@@ -516,6 +528,7 @@ def start_attendance_session():
 
     flash(f"Attendance session started for {event_date} (valid 3 min)", "success")
     return redirect(url_for("attendance_page", event_date=event_date))
+
 @app.route("/attendance/self_mark/<event_date>", methods=["POST"])
 def student_self_mark(event_date):
     student_id = request.form.get("student_id")
@@ -541,6 +554,7 @@ def student_self_mark(event_date):
 
     flash("✅ Attendance marked successfully!", "success")
     return redirect(url_for("home"))
+
 @app.route("/attendance/manual_add/<event_date>", methods=["POST"])
 def admin_manual_add(event_date):
     if not session.get("admin"):
@@ -563,10 +577,14 @@ def admin_manual_add(event_date):
 
     flash("✅ Student added manually.", "success")
     return redirect(url_for("attendance_page", event_date=event_date))
-from flask import send_file
+
 
 @app.route("/attendance/report/<event_date>")
 def attendance_report(event_date):
+    # Note: Assumes generate_attendance_pdf is available.
+    # You will need to import generate_attendance_pdf if you use this route.
+    # If it's in app.utils, ensure it's imported correctly.
+    
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -578,13 +596,28 @@ def attendance_report(event_date):
     records = cursor.fetchall()
     conn.close()
 
-    pdf_bytes = generate_attendance_pdf(records, event_date)  # ✅ new function
+    # NOTE: You need to ensure 'generate_attendance_pdf' is available in app.utils 
+    # and handles the data correctly.
+    # pdf_bytes = generate_attendance_pdf(records, event_date)  # <-- Uncomment and ensure this function is defined
+    
+    # Placeholder for generate_attendance_pdf call
+    # You must define/import 'generate_attendance_pdf' elsewhere.
+    try:
+        from app.utils import generate_attendance_pdf
+        pdf_bytes = generate_attendance_pdf(records, event_date)
+    except ImportError:
+        # Fallback if the utility function is missing. 
+        # This will need to be fixed in your project.
+        flash("PDF generation function missing!", "danger")
+        return redirect(url_for("admin_dashboard"))
+    except NameError:
+        # Fallback if the function is not in scope
+        flash("PDF generation function not found!", "danger")
+        return redirect(url_for("admin_dashboard"))
+    
     return send_file(
         io.BytesIO(pdf_bytes),
         mimetype="application/pdf",
         as_attachment=True,
         download_name=f"Attendance_{event_date}.pdf"
     )
-
-    
-    
