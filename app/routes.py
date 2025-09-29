@@ -95,8 +95,8 @@ def admin_dashboard():
 
             students = []
             for _, row in df.iterrows():
-                # FIX 1: Changed "ieee_id" to "email id" (or unique ID column from CSV) to fix KeyError on upload
-                unique_id = row["email id"] # Assumes 'email id' is used as the unique ID from the form response CSV
+                # REVERTED FIX: Using 'ieee_id' column from the cleaned CSV, assuming the KeyError is now fixed by user.
+                unique_id = row["ieee_id"]
                 
                 qr_file = generate_qr_code(row["name"], unique_id)
                 students.append({
@@ -104,7 +104,7 @@ def admin_dashboard():
                     "Domain": row.get("domain", ""),
                     "Joining Date": row.get("joining_date", ""),
                     "Category": row.get("category", ""),
-                    "IEEE ID": unique_id, # Stores the unique ID/Email in the 'ieee_id' column
+                    "IEEE ID": unique_id, 
                     "QR": qr_file
                 })
 
@@ -148,7 +148,7 @@ def admin_dashboard():
     query = request.args.get("query")
     search_results = []
     if query:
-        # FIX 2: Changed SQL column name '[IEEE ID]' to 'ieee_id' to fix OperationalError
+        # FIX 2: Changed SQL column reference to 'ieee_id'
         c.execute(
             "SELECT id, name, Domain, ieee_id FROM students WHERE name LIKE ? OR ieee_id LIKE ?",  
             (f"%{query}%", f"%{query}%")
@@ -310,7 +310,6 @@ def search():
         # Search student
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
-        # FIX 2: Ensured correct column name 'ieee_id' is used in the query
         if ieee_id:
             c.execute("SELECT id, name, ieee_id, Domain, [Joining_Date], Category, qr_code FROM students WHERE ieee_id = ?", (ieee_id,))
         else:
@@ -481,7 +480,7 @@ def mark_attendance(event_date):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # Insert or update attendance (This is now functional due to models.py update)
+    # This query relies on the UNIQUE constraint added in models.py
     cursor.execute("""
         INSERT INTO attendance (student_id, event_date, status)
         VALUES (?, ?, ?)
@@ -546,7 +545,7 @@ def student_self_mark(event_date):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # This query is now functional due to models.py update
+    # This query relies on the UNIQUE constraint added in models.py
     cursor.execute("""
         INSERT INTO attendance (student_id, event_date, status)
         VALUES (?, ?, 'Present')
@@ -570,7 +569,7 @@ def admin_manual_add(event_date):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # This query is now functional due to models.py update
+    # This query relies on the UNIQUE constraint added in models.py
     cursor.execute("""
         INSERT INTO attendance (student_id, event_date, status)
         VALUES (?, ?, ?)
@@ -589,7 +588,7 @@ def attendance_report(event_date):
     
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-    # Note: a.marked_by is included, relying on the new models.py schema update
+    # SQL query now selects a.marked_by, which requires the updated models.py schema
     cursor.execute("""
         SELECT s.id, s.name, a.status, a.marked_by
         FROM attendance a
@@ -600,7 +599,6 @@ def attendance_report(event_date):
     conn.close()
 
     # Placeholder for generate_attendance_pdf call
-    # This block ensures the function is imported and handles the error if it fails
     try:
         from app.utils import generate_attendance_pdf
         pdf_bytes = generate_attendance_pdf(records, event_date)
