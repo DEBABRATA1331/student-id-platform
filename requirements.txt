@@ -1,8 +1,7 @@
 Flask==2.3.2
-pandas==2.0.3
-numpy==1.23.5   # ✅ Compatible with pandas 2.0.3
+pandas>=2.2.0  # Allow latest stable version
+numpy>=1.26.0  # Allow latest stable version
 qrcode==7.4.2
 Pillow==9.5.0
 reportlab==3.6.13
 gunicorn==21.2.0
-
