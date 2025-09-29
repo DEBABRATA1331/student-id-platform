@@ -6,7 +6,7 @@ import random
 import sqlite3
 from app.models import clear_and_insert_students
 # NOTE: Assuming generate_qr_code, generate_idcard_pdf, and generate_attendance_pdf exist in app.utils
-from app.utils import generate_qr_code, generate_idcard_pdf 
+from app.utils import generate_qr_code, generate_idcard_pdf  
 import threading
 import io
 import csv
@@ -95,13 +95,16 @@ def admin_dashboard():
 
             students = []
             for _, row in df.iterrows():
-                qr_file = generate_qr_code(row["name"], row["ieee_id"])
+                # FIX 1: Changed "ieee_id" to "email id" (or unique ID column from CSV) to fix KeyError on upload
+                unique_id = row["email id"] # Assumes 'email id' is used as the unique ID from the form response CSV
+                
+                qr_file = generate_qr_code(row["name"], unique_id)
                 students.append({
                     "Name": row["name"],
                     "Domain": row.get("domain", ""),
                     "Joining Date": row.get("joining_date", ""),
                     "Category": row.get("category", ""),
-                    "IEEE ID": row["ieee_id"],
+                    "IEEE ID": unique_id, # Stores the unique ID/Email in the 'ieee_id' column
                     "QR": qr_file
                 })
 
@@ -145,8 +148,9 @@ def admin_dashboard():
     query = request.args.get("query")
     search_results = []
     if query:
+        # FIX 2: Changed SQL column name '[IEEE ID]' to 'ieee_id' to fix OperationalError
         c.execute(
-            "SELECT id, name, Domain, [IEEE ID] FROM students WHERE name LIKE ? OR [IEEE ID] LIKE ?", 
+            "SELECT id, name, Domain, ieee_id FROM students WHERE name LIKE ? OR ieee_id LIKE ?",  
             (f"%{query}%", f"%{query}%")
         )
         search_results = [{"id": r[0], "name": r[1], "domain": r[2], "ieee_id": r[3]} for r in c.fetchall()]
@@ -306,6 +310,7 @@ def search():
         # Search student
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
+        # FIX 2: Ensured correct column name 'ieee_id' is used in the query
         if ieee_id:
             c.execute("SELECT id, name, ieee_id, Domain, [Joining_Date], Category, qr_code FROM students WHERE ieee_id = ?", (ieee_id,))
         else:
@@ -314,7 +319,7 @@ def search():
         conn.close()
 
         if row:
-            # FIX APPLIED HERE: Robustly decode qr_code from bytes (row[6]) to string
+            # QR Code Fix: Robustly decode qr_code from bytes (row[6]) to string
             qr_code_value = row[6]
             
             if isinstance(qr_code_value, bytes):
@@ -322,8 +327,7 @@ def search():
                     # Try standard UTF-8 decoding first
                     qr_code_value = qr_code_value.decode('utf-8')
                 except UnicodeDecodeError:
-                    # If UTF-8 fails (as with the 0x89 byte), fall back to latin-1,
-                    # which can decode all byte values and usually works for file paths.
+                    # Fall back to latin-1 to safely convert byte data (like PNG headers) to string
                     qr_code_value = qr_code_value.decode('latin-1')
 
             student = {
@@ -388,7 +392,6 @@ def get_attendance_reports():
     attendance_files = os.listdir('static/attendance_reports') if os.path.exists('static/attendance_reports') else []
     return jsonify({"attendance_files": attendance_files})
 
-# Note: The original request had `from flask import send_file` here, moved to the top.
 @app.route("/download/<int:student_id>")
 def user_download(student_id):
     conn = sqlite3.connect("instance/students.db")
@@ -401,8 +404,8 @@ def user_download(student_id):
         flash("Student not found", "danger")
         return redirect(url_for("search"))
 
-    # Generate PDF
-    pdf_bytes = generate_idcard_pdf(student)
+    # FIX 3: Added student[2] (the ieee_id/unique_id) to the function call to fix TypeError
+    pdf_bytes = generate_idcard_pdf(student, student[2])
     
     return send_file(
         io.BytesIO(pdf_bytes),
@@ -478,7 +481,7 @@ def mark_attendance(event_date):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # Insert or update attendance
+    # Insert or update attendance (This is now functional due to models.py update)
     cursor.execute("""
         INSERT INTO attendance (student_id, event_date, status)
         VALUES (?, ?, ?)
@@ -543,6 +546,7 @@ def student_self_mark(event_date):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
+    # This query is now functional due to models.py update
     cursor.execute("""
         INSERT INTO attendance (student_id, event_date, status)
         VALUES (?, ?, 'Present')
@@ -566,6 +570,7 @@ def admin_manual_add(event_date):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
+    # This query is now functional due to models.py update
     cursor.execute("""
         INSERT INTO attendance (student_id, event_date, status)
         VALUES (?, ?, ?)
@@ -581,12 +586,10 @@ def admin_manual_add(event_date):
 
 @app.route("/attendance/report/<event_date>")
 def attendance_report(event_date):
-    # Note: Assumes generate_attendance_pdf is available.
-    # You will need to import generate_attendance_pdf if you use this route.
-    # If it's in app.utils, ensure it's imported correctly.
     
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
+    # Note: a.marked_by is included, relying on the new models.py schema update
     cursor.execute("""
         SELECT s.id, s.name, a.status, a.marked_by
         FROM attendance a
@@ -596,22 +599,15 @@ def attendance_report(event_date):
     records = cursor.fetchall()
     conn.close()
 
-    # NOTE: You need to ensure 'generate_attendance_pdf' is available in app.utils 
-    # and handles the data correctly.
-    # pdf_bytes = generate_attendance_pdf(records, event_date)  # <-- Uncomment and ensure this function is defined
-    
     # Placeholder for generate_attendance_pdf call
-    # You must define/import 'generate_attendance_pdf' elsewhere.
+    # This block ensures the function is imported and handles the error if it fails
     try:
         from app.utils import generate_attendance_pdf
         pdf_bytes = generate_attendance_pdf(records, event_date)
     except ImportError:
-        # Fallback if the utility function is missing. 
-        # This will need to be fixed in your project.
-        flash("PDF generation function missing!", "danger")
+        flash("PDF generation utility function missing!", "danger")
         return redirect(url_for("admin_dashboard"))
     except NameError:
-        # Fallback if the function is not in scope
         flash("PDF generation function not found!", "danger")
         return redirect(url_for("admin_dashboard"))
     

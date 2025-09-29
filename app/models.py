@@ -6,6 +6,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'instance', 'students.db
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    
+    # STUDENTS TABLE (Original)
     c.execute("""
         CREATE TABLE IF NOT EXISTS students (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,6 +19,20 @@ def init_db():
             qr_code TEXT
         )
     """)
+    
+    # ATTENDANCE TABLE (NEW - Fixes ON CONFLICT and Missing Column errors)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER,
+            event_date TEXT,
+            status TEXT,
+            marked_by TEXT, 
+            -- This constraint is required to use ON CONFLICT in routes.py
+            UNIQUE(student_id, event_date)
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
